@@ -13,6 +13,7 @@ final class OverlayViewModel: ObservableObject {
 
     var onStop: (() -> Void)?
     var onInsert: ((String) -> Void)?
+    var onWritingAction: ((WritingAction) -> Void)?
 
     func showRecording(startedAt: Date) {
         presentation = .recording(startedAt: startedAt)

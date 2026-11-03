@@ -51,15 +51,24 @@ struct OverlayView: View {
                     model.onInsert?(transcript)
                 }
                 .buttonStyle(.borderedProminent)
-                actionButton("Grammar", systemImage: "text.badge.checkmark")
-                actionButton("Professional", systemImage: "briefcase")
+                actionButton("Grammar", systemImage: "text.badge.checkmark") {
+                    model.onWritingAction?(.improveGrammar)
+                }
+                actionButton("Professional", systemImage: "briefcase") {
+                    model.onWritingAction?(.professionalize)
+                }
             }
         }
         .frame(maxWidth: 360, alignment: .leading)
     }
 
-    private func actionButton(_ title: String, systemImage: String) -> some View {
+    private func actionButton(
+        _ title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(title, systemImage: systemImage) {
+            action()
         }
         .buttonStyle(.bordered)
     }

@@ -7,6 +7,7 @@ enum WritingAction: Sendable {
     case changeTone(String)
 }
 
-protocol WritingAssistant: Sendable {
+@MainActor
+protocol WritingAssistant {
     func transform(_ text: String, using action: WritingAction) async throws -> String
 }

@@ -7,7 +7,9 @@ final class AppCoordinator {
     let capture: CaptureCoordinator
     let overlay: OverlayCoordinator
     let textInserter: TextInserter
+    let writingAssistant: WritingAssistant
     private var activeTarget: FocusedTextTarget?
+    private var reviewedText: String?
 
     init(
         session: VerbaSession = VerbaSession(),
@@ -15,12 +17,14 @@ final class AppCoordinator {
         recorder: AudioRecorder = AVAudioRecorderService(),
         transcriber: Transcriber = SpeechTranscriber(),
         overlay: OverlayCoordinator = OverlayCoordinator(),
-        textInserter: TextInserter = AccessibilityTextInserter()
+        textInserter: TextInserter = AccessibilityTextInserter(),
+        writingAssistant: WritingAssistant = AppCoordinator.makeWritingAssistant()
     ) {
         self.session = session
         self.activation = activation
         self.overlay = overlay
         self.textInserter = textInserter
+        self.writingAssistant = writingAssistant
         capture = CaptureCoordinator(
             session: session,
             recorder: recorder,
@@ -37,6 +41,7 @@ final class AppCoordinator {
             self?.overlay.showTranscribing()
         }
         capture.onTranscript = { [weak self] transcript, target in
+            self?.reviewedText = transcript
             self?.overlay.showReview(transcript: transcript, near: target.frame)
         }
         overlay.model.onStop = { [weak self] in
@@ -44,6 +49,9 @@ final class AppCoordinator {
         }
         overlay.model.onInsert = { [weak self] text in
             self?.insert(text)
+        }
+        overlay.model.onWritingAction = { [weak self] action in
+            self?.transformReviewedText(using: action)
         }
     }
 
@@ -66,5 +74,31 @@ final class AppCoordinator {
         } catch {
             session.cancel()
         }
+    }
+
+    private func transformReviewedText(using action: WritingAction) {
+        guard let reviewedText else { return }
+        overlay.showTranscribing()
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let transformed = try await writingAssistant.transform(reviewedText, using: action)
+                self.reviewedText = transformed
+                self.overlay.showReview(transcript: transformed, near: self.activeTarget?.frame)
+            } catch {
+                self.overlay.showReview(transcript: reviewedText, near: self.activeTarget?.frame)
+            }
+        }
+    }
+
+    private static func makeWritingAssistant() -> WritingAssistant {
+        if #available(macOS 26.0, *) {
+            #if canImport(FoundationModels)
+            return FoundationModelsWritingAssistant()
+            #else
+            return UnavailableWritingAssistant()
+            #endif
+        }
+        return UnavailableWritingAssistant()
     }
 }
