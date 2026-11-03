@@ -1,0 +1,28 @@
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - fatal_error_message
+  - force_unwrapping
+  - redundant_nil_coalescing
+
+disabled_rules:
+  - trailing_comma
+
+line_length:
+  warning: 120
+  error: 160
+
+type_body_length:
+  warning: 300
+  error: 400
+
+file_length:
+  warning: 400
+  error: 600

@@ -34,3 +34,18 @@ Tests/VerbaTests/
 Verba is intentionally macOS-only and Swift-only. SwiftUI will own the visual components, while AppKit will handle the menu bar app, floating panels, global events, accessibility, and text insertion.
 
 The first implementation should use explicit protocols around transcription, writing intelligence, and text insertion. This lets us test the state machine without requiring a microphone, Accessibility permission, or an Apple Intelligence-capable Mac.
+
+## Engineering rules
+
+- Keep files focused on one responsibility; split types when a file starts carrying multiple concerns.
+- Use protocols at system boundaries so microphone, transcription, intelligence, and Accessibility implementations can be replaced in tests.
+- Keep state transitions in domain objects, not inside views or AppKit delegates.
+- Construct application dependencies in `AppCoordinator`; keep `AppDelegate` limited to lifecycle and menu-bar wiring.
+- Run `make check` before opening a pull request. CI repeats linting, building, and tests for every pull request targeting `main` and every push to `main`.
+
+## Patterns in use
+
+- **State machine:** `VerbaSession` owns the legal lifecycle transitions.
+- **Ports and adapters:** `Transcriber`, `TextInserter`, `WritingAssistant`, and `ActivationController` isolate system services from feature logic.
+- **Coordinator/composition root:** `AppCoordinator` constructs and connects application services; UI and delegates do not create infrastructure directly.
+- **MVVM where needed:** overlay screens will keep presentation state in view models instead of embedding behavior in SwiftUI views.
