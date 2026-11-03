@@ -1,5 +1,6 @@
 import Foundation
 
-protocol TextInserter: Sendable {
-    func insert(_ text: String) async throws
+@MainActor
+protocol TextInserter {
+    func insert(_ text: String, into target: FocusedTextTarget) throws
 }

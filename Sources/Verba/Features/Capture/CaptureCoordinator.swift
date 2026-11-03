@@ -6,8 +6,11 @@ final class CaptureCoordinator {
     private let recorder: AudioRecorder
     private let transcriber: Transcriber
     private var originalText: String?
+    private var target: FocusedTextTarget?
 
-    var onTranscript: ((String) -> Void)?
+    var onRecordingStarted: ((FocusedTextTarget, Date) -> Void)?
+    var onTranscribing: (() -> Void)?
+    var onTranscript: ((String, FocusedTextTarget) -> Void)?
     var onError: ((Error) -> Void)?
 
     init(
@@ -21,6 +24,7 @@ final class CaptureCoordinator {
     }
 
     func toggle(for target: FocusedTextTarget) {
+        self.target = target
         toggle(originalText: target.selectedText)
     }
 
@@ -40,21 +44,32 @@ final class CaptureCoordinator {
             try recorder.start()
             self.originalText = originalText
             session.startListening()
+            if case let .listening(startedAt) = session.state, let target {
+                onRecordingStarted?(target, startedAt)
+            }
         } catch {
             onError?(error)
         }
+    }
+
+    func stop() {
+        guard case .listening = session.state else { return }
+        stopAndTranscribe()
     }
 
     private func stopAndTranscribe() {
         do {
             let audioURL = try recorder.stop()
             session.stopListening()
+            onTranscribing?()
             Task { [weak self] in
                 guard let self else { return }
                 do {
                     let transcript = try await transcriber.transcribe(audio: audioURL)
                     session.showTranscript(transcript, replacing: originalText)
-                    onTranscript?(transcript)
+                    if let target {
+                        onTranscript?(transcript, target)
+                    }
                 } catch {
                     session.cancel()
                     onError?(error)
