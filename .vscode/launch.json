@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:verba}",
+            "name": "Debug Verba",
+            "target": "Verba",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Verba"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:verba}",
+            "name": "Release Verba",
+            "target": "Verba",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Verba"
+        }
+    ]
+}
