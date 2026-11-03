@@ -8,5 +8,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem?.button?.title = "V"
+        coordinator.start()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        coordinator.stop()
     }
 }
