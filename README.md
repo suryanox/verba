@@ -49,3 +49,5 @@ The first implementation should use explicit protocols around transcription, wri
 - **Ports and adapters:** `Transcriber`, `TextInserter`, `WritingAssistant`, and `ActivationController` isolate system services from feature logic.
 - **Coordinator/composition root:** `AppCoordinator` constructs and connects application services; UI and delegates do not create infrastructure directly.
 - **MVVM where needed:** overlay screens will keep presentation state in view models instead of embedding behavior in SwiftUI views.
+
+The packaged macOS target must include [`Config/Info.plist`](/Users/sooraj/Code/Projects/verba/Config/Info.plist) so macOS can request microphone and speech-recognition permissions.
