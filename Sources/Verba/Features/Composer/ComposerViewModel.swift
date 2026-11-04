@@ -4,7 +4,6 @@ import Foundation
 enum ComposerPhase: Equatable {
     case ready
     case recording(startedAt: Date)
-    case transcribing
     case enhancing(WritingAction)
     case error(String)
 }
@@ -15,17 +14,16 @@ final class ComposerViewModel: ObservableObject {
     @Published private(set) var phase: ComposerPhase = .ready
     @Published private(set) var hasCopied = false
 
-    private let recorder: AudioRecorder
-    private let transcriber: Transcriber
+    private let liveSpeech: LiveSpeechSession
     private let writingAssistant: WritingAssistant
+    private var baseText = ""
+    private var recordingGeneration = 0
 
     init(
-        recorder: AudioRecorder = AVAudioRecorderService(),
-        transcriber: Transcriber = SpeechTranscriber(),
+        liveSpeech: LiveSpeechSession = SpeechLiveSession(),
         writingAssistant: WritingAssistant? = nil
     ) {
-        self.recorder = recorder
-        self.transcriber = transcriber
+        self.liveSpeech = liveSpeech
         self.writingAssistant = writingAssistant ?? Self.makeWritingAssistant()
     }
 
@@ -36,7 +34,7 @@ final class ComposerViewModel: ObservableObject {
 
     var isBusy: Bool {
         switch phase {
-        case .transcribing, .enhancing: return true
+        case .enhancing: return true
         default: return false
         }
     }
@@ -50,34 +48,38 @@ final class ComposerViewModel: ObservableObject {
     }
 
     func startRecording() {
-        do {
-            try recorder.start()
-            phase = .recording(startedAt: .now)
-            hasCopied = false
-        } catch {
-            phase = .error(error.localizedDescription)
+        recordingGeneration += 1
+        let generation = recordingGeneration
+        baseText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        phase = .recording(startedAt: .now)
+        hasCopied = false
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let partialTexts = try await liveSpeech.start()
+                for await partialText in partialTexts {
+                    guard recordingGeneration == generation, isRecording else { return }
+                    let separator = baseText.isEmpty ? "" : " "
+                    text = baseText + separator + partialText
+                }
+                guard recordingGeneration == generation, isRecording else {
+                    liveSpeech.stop()
+                    return
+                }
+            } catch {
+                guard recordingGeneration == generation else { return }
+                phase = .error(error.localizedDescription)
+            }
         }
     }
 
     func stopRecording() {
         guard isRecording else { return }
 
-        do {
-            let audioURL = try recorder.stop()
-            phase = .transcribing
-            Task { [weak self] in
-                guard let self else { return }
-                do {
-                    let transcript = try await transcriber.transcribe(audio: audioURL)
-                    text = transcript
-                    phase = .ready
-                } catch {
-                    phase = .error(error.localizedDescription)
-                }
-            }
-        } catch {
-            phase = .error(error.localizedDescription)
-        }
+        recordingGeneration += 1
+        liveSpeech.stop()
+        baseText = ""
+        phase = .ready
     }
 
     func apply(_ action: WritingAction) {
@@ -107,13 +109,23 @@ final class ComposerViewModel: ObservableObject {
     }
 
     func clear() {
+        recordingGeneration += 1
         text = ""
+        liveSpeech.stop()
+        baseText = ""
         phase = .ready
         hasCopied = false
     }
 
     func dismissError() {
         if case .error = phase { phase = .ready }
+    }
+
+    func openSpeechSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition")
+        if let url {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private static func makeWritingAssistant() -> WritingAssistant {

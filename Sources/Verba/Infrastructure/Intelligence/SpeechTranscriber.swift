@@ -53,7 +53,16 @@ final class SpeechTranscriber: Transcriber {
     }
 }
 
-enum SpeechTranscriptionError: Error, Equatable {
+enum SpeechTranscriptionError: LocalizedError, Equatable {
     case unavailable
     case notAuthorized
+
+    var errorDescription: String? {
+        switch self {
+        case .unavailable:
+            return "Apple Speech Recognition is unavailable right now."
+        case .notAuthorized:
+            return "Speech Recognition is not authorized for this Verba app build."
+        }
+    }
 }

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ComposerView: View {
@@ -9,15 +10,13 @@ struct ComposerView: View {
 
             VStack(spacing: 0) {
                 header
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 28) {
-                        introduction
-                        editorCard
-                        enhancementBar
-                    }
-                    .padding(.horizontal, 42)
-                    .padding(.vertical, 36)
+                VStack(alignment: .leading, spacing: 28) {
+                    introduction
+                    editorCard
+                    enhancementBar
                 }
+                .padding(.horizontal, 42)
+                .padding(.vertical, 36)
             }
         }
         .frame(minWidth: 820, minHeight: 650)
@@ -95,6 +94,8 @@ struct ComposerView: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(.white.opacity(0.4))
                 }
+                Spacer()
+                undoRedoControls
             }
 
             ZStack(alignment: .topLeading) {
@@ -161,6 +162,22 @@ struct ComposerView: View {
         .padding(.top, 16)
     }
 
+    private var undoRedoControls: some View {
+        HStack(spacing: 4) {
+            Button("Undo", systemImage: "arrow.uturn.backward") {
+                NSApp.sendAction(#selector(UndoManager.undo), to: nil, from: nil)
+            }
+            .keyboardShortcut("z", modifiers: .command)
+            Button("Redo", systemImage: "arrow.uturn.forward") {
+                NSApp.sendAction(#selector(UndoManager.redo), to: nil, from: nil)
+            }
+            .keyboardShortcut("z", modifiers: [.command, .shift])
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.plain)
+        .foregroundStyle(.white.opacity(0.42))
+    }
+
     @ViewBuilder
     private var phaseStatus: some View {
         switch model.phase {
@@ -173,21 +190,25 @@ struct ComposerView: View {
                 }
                 .foregroundStyle(.white.opacity(0.58))
             }
-        case .transcribing:
-            Label("Transcribing…", systemImage: "waveform")
-                .foregroundStyle(.white.opacity(0.48))
         case let .enhancing(action):
             Label(action.title, systemImage: "sparkles")
                 .foregroundStyle(.white.opacity(0.48))
         case let .error(message):
-            Button {
-                model.dismissError()
-            } label: {
+            HStack(spacing: 10) {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .lineLimit(1)
                     .foregroundStyle(Color.verbaGold)
+                Button("Speech Settings") {
+                    model.openSpeechSettings()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(0.7))
+                Button("Dismiss") {
+                    model.dismissError()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white.opacity(0.45))
             }
-            .buttonStyle(.plain)
         case .ready:
             EmptyView()
         }
