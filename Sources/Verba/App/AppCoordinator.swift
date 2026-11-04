@@ -34,6 +34,9 @@ final class AppCoordinator {
             self?.activeTarget = target
             self?.capture.toggle(for: target)
         }
+        activation.onActivationFailure = { [weak self] message in
+            self?.overlay.showError(message, near: nil)
+        }
         capture.onRecordingStarted = { [weak self] target, startedAt in
             self?.overlay.showRecording(near: target.frame, startedAt: startedAt)
         }
@@ -43,6 +46,10 @@ final class AppCoordinator {
         capture.onTranscript = { [weak self] transcript, target in
             self?.reviewedText = transcript
             self?.overlay.showReview(transcript: transcript, near: target.frame)
+        }
+        capture.onError = { [weak self] error in
+            guard let self else { return }
+            self.overlay.showError(error.localizedDescription, near: self.activeTarget?.frame)
         }
         overlay.model.onStop = { [weak self] in
             self?.capture.stop()

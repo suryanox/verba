@@ -1,6 +1,6 @@
 import Foundation
 
-enum WritingAction: Sendable {
+enum WritingAction: Equatable, Sendable {
     case improveGrammar
     case professionalize
     case makeConcise

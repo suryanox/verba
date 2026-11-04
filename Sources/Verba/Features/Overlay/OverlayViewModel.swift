@@ -5,6 +5,7 @@ enum OverlayPresentation {
     case recording(startedAt: Date)
     case transcribing
     case reviewing(transcript: String)
+    case error(message: String)
 }
 
 @MainActor
@@ -25,6 +26,10 @@ final class OverlayViewModel: ObservableObject {
 
     func showReview(transcript: String) {
         presentation = .reviewing(transcript: transcript)
+    }
+
+    func showError(_ message: String) {
+        presentation = .error(message: message)
     }
 
     func hide() {

@@ -24,6 +24,11 @@ final class OverlayCoordinator {
         window.show(near: frame)
     }
 
+    func showError(_ message: String, near frame: CGRect?) {
+        model.showError(message)
+        window.show(near: frame)
+    }
+
     func hide() {
         model.hide()
         window.hide()

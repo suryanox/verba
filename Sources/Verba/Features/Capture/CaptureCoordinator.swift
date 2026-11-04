@@ -48,6 +48,7 @@ final class CaptureCoordinator {
                 onRecordingStarted?(target, startedAt)
             }
         } catch {
+            print("Verba: recording failed: \(error)")
             onError?(error)
         }
     }
@@ -71,11 +72,13 @@ final class CaptureCoordinator {
                         onTranscript?(transcript, target)
                     }
                 } catch {
+                    print("Verba: transcription failed: \(error)")
                     session.cancel()
                     onError?(error)
                 }
             }
         } catch {
+            print("Verba: stopping recording failed: \(error)")
             session.cancel()
             onError?(error)
         }

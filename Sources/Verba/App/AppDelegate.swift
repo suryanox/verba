@@ -2,16 +2,13 @@ import AppKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusItem: NSStatusItem?
-    private let coordinator = AppCoordinator()
+    private let composerModel = ComposerViewModel()
+    private let permissions = PermissionCoordinator()
+    private var mainWindow: MainWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem?.button?.title = "V"
-        coordinator.start()
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        coordinator.stop()
+        permissions.requestAll()
+        mainWindow = MainWindowController(model: composerModel)
+        mainWindow?.present()
     }
 }

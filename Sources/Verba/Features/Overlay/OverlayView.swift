@@ -12,6 +12,8 @@ struct OverlayView: View {
                 statusView(title: "Transcribing…", systemImage: "waveform")
             case let .reviewing(transcript):
                 reviewView(transcript: transcript)
+            case let .error(message):
+                statusView(title: message, systemImage: "exclamationmark.triangle")
             case nil:
                 EmptyView()
             }

@@ -12,7 +12,19 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Verba",
-            path: "Sources/Verba"
+            path: "Sources/Verba",
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker",
+                    "-sectcreate",
+                    "-Xlinker",
+                    "__TEXT",
+                    "-Xlinker",
+                    "__info_plist",
+                    "-Xlinker",
+                    "Config/Info.plist"
+                ])
+            ]
         ),
         .testTarget(
             name: "VerbaTests",

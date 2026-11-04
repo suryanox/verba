@@ -5,8 +5,8 @@ struct ShortcutConfiguration: Sendable {
     let requiredModifiers: NSEvent.ModifierFlags
 
     static let `default` = ShortcutConfiguration(
-        keyCode: 49,
-        requiredModifiers: [.option]
+        keyCode: 15,
+        requiredModifiers: [.control, .option, .command]
     )
 
     func matches(_ event: NSEvent) -> Bool {

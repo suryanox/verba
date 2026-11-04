@@ -32,6 +32,10 @@ final class SpeechTranscriber: Transcriber {
     }
 
     private func requestAuthorization() async throws {
+        guard Bundle.main.object(forInfoDictionaryKey: "NSSpeechRecognitionUsageDescription") != nil else {
+            throw SpeechTranscriptionError.notAuthorized
+        }
+
         let status = SFSpeechRecognizer.authorizationStatus()
         if status == .authorized { return }
         guard status == .notDetermined else {
