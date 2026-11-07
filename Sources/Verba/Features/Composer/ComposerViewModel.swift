@@ -9,6 +9,14 @@ enum ComposerPhase: Equatable {
     case error(String)
 }
 
+/// A saved snapshot of the document that can be restored from the History popover.
+struct DocumentVersion: Identifiable, Codable, Equatable {
+    let id: UUID
+    let date: Date
+    let label: String
+    let text: String
+}
+
 @MainActor
 final class ComposerViewModel: ObservableObject {
     static let tones = ["Friendly", "Casual", "Confident", "Warm", "Persuasive", "Formal"]
@@ -21,8 +29,8 @@ final class ComposerViewModel: ObservableObject {
     }
     @Published private(set) var phase: ComposerPhase = .ready
     @Published private(set) var hasCopied = false
-    /// The text as it was before the last AI edit or clear, so it can be swapped back.
-    @Published private(set) var previousText: String?
+    /// Newest first.
+    @Published private(set) var history: [DocumentVersion] = []
 
     private let liveSpeech: LiveSpeechSession
     private let writingAssistant: WritingAssistant
@@ -30,6 +38,7 @@ final class ComposerViewModel: ObservableObject {
     private var baseText = ""
     private var recordingGeneration = 0
     private var draftTask: Task<Void, Never>?
+    private var snapshotTask: Task<Void, Never>?
 
     init(
         liveSpeech: LiveSpeechSession = SpeechLiveSession(),
@@ -41,6 +50,7 @@ final class ComposerViewModel: ObservableObject {
         self.defaults = defaults
         text = defaults.string(forKey: Self.textKey) ?? ""
         title = defaults.string(forKey: Self.titleKey) ?? ""
+        history = Self.loadHistory(from: defaults)
     }
 
     // MARK: - State
@@ -61,8 +71,8 @@ final class ComposerViewModel: ObservableObject {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    var canRevert: Bool {
-        previousText != nil && !isRecording && !isBusy
+    var canRestoreHistory: Bool {
+        !isRecording && !isBusy
     }
 
     var wordCount: Int {
@@ -86,6 +96,7 @@ final class ComposerViewModel: ObservableObject {
     func startRecording() {
         recordingGeneration += 1
         let generation = recordingGeneration
+        saveVersion("Before dictation")
         baseText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         phase = .recording(startedAt: .now)
         hasCopied = false
@@ -116,6 +127,7 @@ final class ComposerViewModel: ObservableObject {
         liveSpeech.stop()
         baseText = ""
         phase = .ready
+        saveVersion("Dictation")
     }
 
     // MARK: - Writing tools
@@ -123,26 +135,56 @@ final class ComposerViewModel: ObservableObject {
     func apply(_ action: WritingAction) {
         guard hasContent, !isBusy, !isRecording else { return }
         let original = text
+        saveVersion("Before \(Self.name(of: action))")
         phase = .enhancing(action)
         Task { [weak self] in
             guard let self else { return }
             do {
-                let result = try await writingAssistant.transform(original, using: action)
-                previousText = original
-                text = result
+                text = try await writingAssistant.transform(original, using: action)
                 phase = .ready
+                saveVersion(Self.name(of: action).capitalized)
             } catch {
                 phase = .error(error.localizedDescription)
             }
         }
     }
 
-    /// Swaps the current text with the version saved before the last AI edit or clear.
-    func revert() {
-        guard let previousText, canRevert else { return }
-        let current = text
-        text = previousText
-        self.previousText = current.isEmpty ? nil : current
+    private static func name(of action: WritingAction) -> String {
+        switch action {
+        case .improveGrammar: return "grammar fix"
+        case .professionalize: return "polish"
+        case .makeConcise: return "shorten"
+        case let .changeTone(tone): return "\(tone.lowercased()) tone"
+        }
+    }
+
+    // MARK: - History
+
+    /// Stores a snapshot unless it is empty or identical to the newest one.
+    func saveVersion(_ label: String) {
+        guard hasContent, history.first?.text != text else { return }
+        let version = DocumentVersion(id: UUID(), date: .now, label: label, text: text)
+        history.insert(version, at: 0)
+        if history.count > Self.historyLimit {
+            history.removeLast(history.count - Self.historyLimit)
+        }
+        persistHistory()
+    }
+
+    func restore(_ version: DocumentVersion) {
+        guard canRestoreHistory else { return }
+        saveVersion("Before restore")
+        text = version.text
+    }
+
+    func deleteVersion(_ version: DocumentVersion) {
+        history.removeAll { $0.id == version.id }
+        persistHistory()
+    }
+
+    func clearHistory() {
+        history = []
+        persistHistory()
     }
 
     // MARK: - Document
@@ -160,7 +202,7 @@ final class ComposerViewModel: ObservableObject {
 
     func clear() {
         recordingGeneration += 1
-        if !text.isEmpty { previousText = text }
+        saveVersion("Before clear")
         text = ""
         liveSpeech.stop()
         baseText = ""
@@ -195,16 +237,20 @@ final class ComposerViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Draft persistence
+    // MARK: - Persistence
 
-    /// Writes the draft immediately. Call this before the app quits.
+    /// Writes the draft and a final snapshot immediately. Call this before the app quits.
     func flushDraft() {
         draftTask?.cancel()
+        snapshotTask?.cancel()
         persistDraft()
+        saveVersion("Autosave")
     }
 
     private static let textKey = "verba.draft.text"
     private static let titleKey = "verba.draft.title"
+    private static let historyKey = "verba.history"
+    private static let historyLimit = 40
 
     private func scheduleDraftSave() {
         draftTask?.cancel()
@@ -213,11 +259,29 @@ final class ComposerViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.persistDraft()
         }
+
+        // After a pause in typing, keep a snapshot so there is always something to go back to.
+        snapshotTask?.cancel()
+        snapshotTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled, let self, !isRecording, !isBusy else { return }
+            saveVersion("Autosave")
+        }
     }
 
     private func persistDraft() {
         defaults.set(text, forKey: Self.textKey)
         defaults.set(title, forKey: Self.titleKey)
+    }
+
+    private func persistHistory() {
+        guard let data = try? JSONEncoder().encode(history) else { return }
+        defaults.set(data, forKey: Self.historyKey)
+    }
+
+    private static func loadHistory(from defaults: UserDefaults) -> [DocumentVersion] {
+        guard let data = defaults.data(forKey: historyKey) else { return [] }
+        return (try? JSONDecoder().decode([DocumentVersion].self, from: data)) ?? []
     }
 
     private static func makeWritingAssistant() -> WritingAssistant {

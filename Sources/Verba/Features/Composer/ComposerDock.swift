@@ -5,12 +5,16 @@ struct ComposerDock: View {
     @ObservedObject var model: ComposerViewModel
     let theme: ComposerTheme
 
+    @State private var showHistory = false
+
     var body: some View {
         ViewThatFits(in: .horizontal) {
             bar(showLabels: true)
             bar(showLabels: false)
         }
-        .animation(.snappy(duration: 0.25), value: model.canRevert)
+        .popover(isPresented: $showHistory, arrowEdge: .top) {
+            ComposerHistoryView(model: model, theme: theme) { showHistory = false }
+        }
     }
 
     private func bar(showLabels: Bool) -> some View {
@@ -91,10 +95,7 @@ struct ComposerDock: View {
             iconButton("Undo", icon: "arrow.uturn.backward") { NativeTextEditorActions.undo() }
             iconButton("Redo", icon: "arrow.uturn.forward") { NativeTextEditorActions.redo() }
 
-            if model.canRevert {
-                iconButton("Swap with previous version", icon: "clock.arrow.circlepath") { model.revert() }
-                    .transition(.scale.combined(with: .opacity))
-            }
+            iconButton("History", icon: "clock.arrow.circlepath") { showHistory.toggle() }
 
             iconButton("Copy all  ⇧⌘C", icon: model.hasCopied ? "checkmark" : "doc.on.doc") { model.copyText() }
                 .keyboardShortcut("c", modifiers: [.command, .shift])

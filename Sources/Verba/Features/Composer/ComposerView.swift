@@ -65,7 +65,7 @@ struct ComposerView: View {
 
     private var editor: some View {
         ZStack(alignment: .top) {
-            NativeTextEditor(text: $model.text, style: editorStyle)
+            NativeTextEditor(text: $model.text, style: editorStyle, isDictating: model.isRecording)
 
             if model.text.isEmpty {
                 placeholder

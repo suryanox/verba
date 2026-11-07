@@ -10,15 +10,20 @@ enum NativeTextEditorActions {
     }
 
     static func undo() {
-        activeTextView?.undoManager?.undo()
+        guard let textView = activeTextView else { return }
+        textView.window?.makeFirstResponder(textView)
+        textView.undoManager?.undo()
     }
 
     static func redo() {
-        activeTextView?.undoManager?.redo()
+        guard let textView = activeTextView else { return }
+        textView.window?.makeFirstResponder(textView)
+        textView.undoManager?.redo()
     }
 }
 
-/// Everything the editor needs to draw itself. Equatable so we only restyle when something changed.
+/// Everything the editor needs to draw itself. Compared by value (not object identity) so the editor
+/// only restyles when something really changed. Restyling on every keystroke would disturb undo.
 struct EditorStyle: Equatable {
     var font: NSFont
     var textColor: NSColor
@@ -26,11 +31,40 @@ struct EditorStyle: Equatable {
     var selectionColor: NSColor
     var lineHeightMultiple: CGFloat
     var columnWidth: CGFloat
+
+    static func == (lhs: EditorStyle, rhs: EditorStyle) -> Bool {
+        lhs.signature == rhs.signature
+    }
+
+    private var signature: String {
+        [
+            font.fontName,
+            String(format: "%.1f", font.pointSize),
+            Self.rgba(textColor),
+            Self.rgba(caretColor),
+            Self.rgba(selectionColor),
+            String(format: "%.2f", lineHeightMultiple),
+            String(format: "%.0f", columnWidth)
+        ].joined(separator: "|")
+    }
+
+    private static func rgba(_ color: NSColor) -> String {
+        guard let rgb = color.usingColorSpace(.sRGB) else { return color.description }
+        return String(
+            format: "%.3f,%.3f,%.3f,%.3f",
+            rgb.redComponent,
+            rgb.greenComponent,
+            rgb.blueComponent,
+            rgb.alphaComponent
+        )
+    }
 }
 
 struct NativeTextEditor: NSViewRepresentable {
     @Binding var text: String
     var style: EditorStyle
+    /// While true, all programmatic text changes are merged into one undo step.
+    var isDictating = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -61,20 +95,40 @@ struct NativeTextEditor: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NativeTextView else { return }
-        context.coordinator.parent = self
+        let coordinator = context.coordinator
+        coordinator.parent = self
+
+        updateDictationGrouping(textView, coordinator: coordinator)
 
         if textView.string != text {
-            textView.string = text
+            // Replace through the text system so the change lands on the undo stack.
+            coordinator.isApplyingExternalChange = true
+            textView.replaceAll(with: text)
+            coordinator.isApplyingExternalChange = false
+
             textView.apply(style)
             let end = NSRange(location: textView.string.utf16.count, length: 0)
             textView.setSelectedRange(end)
             textView.scrollRangeToVisible(end)
-        } else if context.coordinator.lastStyle != style {
+        } else if coordinator.lastStyle != style {
             textView.apply(style)
         }
 
-        context.coordinator.lastStyle = style
+        coordinator.lastStyle = style
         textView.columnWidth = style.columnWidth
+    }
+
+    private func updateDictationGrouping(_ textView: NSTextView, coordinator: Coordinator) {
+        guard coordinator.wasDictating != isDictating else { return }
+        coordinator.wasDictating = isDictating
+        guard let undoManager = textView.undoManager else { return }
+        if isDictating {
+            undoManager.groupsByEvent = false
+            undoManager.beginUndoGrouping()
+        } else {
+            undoManager.endUndoGrouping()
+            undoManager.groupsByEvent = true
+        }
     }
 
     private func configure(_ textView: NativeTextView, delegate: NSTextViewDelegate) {
@@ -109,12 +163,16 @@ struct NativeTextEditor: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: NativeTextEditor
         var lastStyle: EditorStyle?
+        var wasDictating = false
+        var isApplyingExternalChange = false
 
         init(_ parent: NativeTextEditor) {
             self.parent = parent
         }
 
         func textDidChange(_ notification: Notification) {
+            // Skip echoes of changes that came from the model, to avoid writing state during a view update.
+            guard !isApplyingExternalChange else { return }
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
         }
@@ -122,6 +180,16 @@ struct NativeTextEditor: NSViewRepresentable {
 }
 
 private extension NSTextView {
+    func replaceAll(with newText: String) {
+        let fullRange = NSRange(location: 0, length: (string as NSString).length)
+        if shouldChangeText(in: fullRange, replacementString: newText) {
+            textStorage?.replaceCharacters(in: fullRange, with: newText)
+            didChangeText()
+        } else {
+            string = newText
+        }
+    }
+
     func apply(_ style: EditorStyle) {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineHeightMultiple = style.lineHeightMultiple
@@ -132,8 +200,6 @@ private extension NSTextView {
             .paragraphStyle: paragraph
         ]
 
-        font = style.font
-        textColor = style.textColor
         insertionPointColor = style.caretColor
         defaultParagraphStyle = paragraph
         typingAttributes = attributes
