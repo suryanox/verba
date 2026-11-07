@@ -7,8 +7,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var mainWindow: MainWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        AppMenu.install()
         permissions.requestAll()
         mainWindow = MainWindowController(model: composerModel)
         mainWindow?.present()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        composerModel.flushDraft()
     }
 }

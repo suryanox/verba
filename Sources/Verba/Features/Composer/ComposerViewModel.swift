@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import UniformTypeIdentifiers
 
 enum ComposerPhase: Equatable {
     case ready
@@ -10,22 +11,39 @@ enum ComposerPhase: Equatable {
 
 @MainActor
 final class ComposerViewModel: ObservableObject {
-    @Published var text = ""
+    static let tones = ["Friendly", "Casual", "Confident", "Warm", "Persuasive", "Formal"]
+
+    @Published var text = "" {
+        didSet { scheduleDraftSave() }
+    }
+    @Published var title = "" {
+        didSet { scheduleDraftSave() }
+    }
     @Published private(set) var phase: ComposerPhase = .ready
     @Published private(set) var hasCopied = false
+    /// The text as it was before the last AI edit or clear, so it can be swapped back.
+    @Published private(set) var previousText: String?
 
     private let liveSpeech: LiveSpeechSession
     private let writingAssistant: WritingAssistant
+    private let defaults: UserDefaults
     private var baseText = ""
     private var recordingGeneration = 0
+    private var draftTask: Task<Void, Never>?
 
     init(
         liveSpeech: LiveSpeechSession = SpeechLiveSession(),
-        writingAssistant: WritingAssistant? = nil
+        writingAssistant: WritingAssistant? = nil,
+        defaults: UserDefaults = .standard
     ) {
         self.liveSpeech = liveSpeech
         self.writingAssistant = writingAssistant ?? Self.makeWritingAssistant()
+        self.defaults = defaults
+        text = defaults.string(forKey: Self.textKey) ?? ""
+        title = defaults.string(forKey: Self.titleKey) ?? ""
     }
+
+    // MARK: - State
 
     var isRecording: Bool {
         if case .recording = phase { return true }
@@ -38,6 +56,24 @@ final class ComposerViewModel: ObservableObject {
         default: return false
         }
     }
+
+    var hasContent: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var canRevert: Bool {
+        previousText != nil && !isRecording && !isBusy
+    }
+
+    var wordCount: Int {
+        text.split { $0.isWhitespace || $0.isNewline }.count
+    }
+
+    var readingMinutes: Int {
+        max(1, Int((Double(wordCount) / 230).rounded(.up)))
+    }
+
+    // MARK: - Dictation
 
     func toggleRecording() {
         if isRecording {
@@ -82,20 +118,34 @@ final class ComposerViewModel: ObservableObject {
         phase = .ready
     }
 
+    // MARK: - Writing tools
+
     func apply(_ action: WritingAction) {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isBusy else { return }
+        guard hasContent, !isBusy, !isRecording else { return }
         let original = text
         phase = .enhancing(action)
         Task { [weak self] in
             guard let self else { return }
             do {
-                text = try await writingAssistant.transform(original, using: action)
+                let result = try await writingAssistant.transform(original, using: action)
+                previousText = original
+                text = result
                 phase = .ready
             } catch {
                 phase = .error(error.localizedDescription)
             }
         }
     }
+
+    /// Swaps the current text with the version saved before the last AI edit or clear.
+    func revert() {
+        guard let previousText, canRevert else { return }
+        let current = text
+        text = previousText
+        self.previousText = current.isEmpty ? nil : current
+    }
+
+    // MARK: - Document
 
     func copyText() {
         guard !text.isEmpty else { return }
@@ -110,12 +160,29 @@ final class ComposerViewModel: ObservableObject {
 
     func clear() {
         recordingGeneration += 1
+        if !text.isEmpty { previousText = text }
         text = ""
         liveSpeech.stop()
         baseText = ""
         phase = .ready
         hasCopied = false
     }
+
+    func exportDocument() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.canCreateDirectories = true
+        let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        panel.nameFieldStringValue = (name.isEmpty ? "Untitled" : name) + ".txt"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try text.write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            phase = .error(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Errors and settings
 
     func dismissError() {
         if case .error = phase { phase = .ready }
@@ -126,6 +193,31 @@ final class ComposerViewModel: ObservableObject {
         if let url {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    // MARK: - Draft persistence
+
+    /// Writes the draft immediately. Call this before the app quits.
+    func flushDraft() {
+        draftTask?.cancel()
+        persistDraft()
+    }
+
+    private static let textKey = "verba.draft.text"
+    private static let titleKey = "verba.draft.title"
+
+    private func scheduleDraftSave() {
+        draftTask?.cancel()
+        draftTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            self?.persistDraft()
+        }
+    }
+
+    private func persistDraft() {
+        defaults.set(text, forKey: Self.textKey)
+        defaults.set(title, forKey: Self.titleKey)
     }
 
     private static func makeWritingAssistant() -> WritingAssistant {
