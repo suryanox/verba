@@ -21,7 +21,13 @@ struct ComposerDock: View {
         HStack(spacing: 4) {
             DictationButton(model: model, theme: theme, showTitle: showLabels)
             divider
-            polishButton("Fix", icon: "text.badge.checkmark", action: .improveGrammar, key: "1", showLabels: showLabels)
+            polishButton(
+                "Fix",
+                icon: "text.badge.checkmark",
+                action: .improveGrammar,
+                key: "1",
+                showLabels: showLabels
+            )
             polishButton("Polish", icon: "sparkles", action: .professionalize, key: "2", showLabels: showLabels)
             polishButton(
                 "Shorten",
