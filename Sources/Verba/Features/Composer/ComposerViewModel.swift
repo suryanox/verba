@@ -123,12 +123,7 @@ final class ComposerViewModel: ObservableObject {
                 let partialTexts = try await liveSpeech.start()
                 for await partialText in partialTexts {
                     guard recordingGeneration == generation, isRecording else { return }
-                    if isPrompt {
-                        promptText = partialText
-                    } else {
-                        let separator = baseText.isEmpty ? "" : " "
-                        text = baseText + separator + partialText
-                    }
+                    receive(partialText, isPrompt: isPrompt)
                 }
                 guard recordingGeneration == generation, isRecording else {
                     liveSpeech.stop()
@@ -138,6 +133,16 @@ final class ComposerViewModel: ObservableObject {
                 guard recordingGeneration == generation else { return }
                 phase = .error(error.localizedDescription)
             }
+        }
+    }
+
+    /// Routes live speech to the prompt card in prompt mode, or into the document otherwise.
+    private func receive(_ partialText: String, isPrompt: Bool) {
+        if isPrompt {
+            promptText = partialText
+        } else {
+            let separator = baseText.isEmpty ? "" : " "
+            text = baseText + separator + partialText
         }
     }
 

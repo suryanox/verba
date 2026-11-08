@@ -68,7 +68,8 @@ final class StartupWindowController: NSWindowController {
         title.font = .boldSystemFont(ofSize: 22)
 
         let description = NSTextField(
-            wrappingLabelWithString: "Keep this window open while granting permissions. Verba will show its microphone overlay near the focused text field."
+            wrappingLabelWithString: "Keep this window open while granting permissions. "
+                + "Verba will show its microphone overlay near the focused text field."
         )
 
         let refreshButton = NSButton(
