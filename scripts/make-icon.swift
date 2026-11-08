@@ -3,8 +3,8 @@
 //
 // Usage: swift scripts/make-icon.swift <output .iconset directory>
 //
-// The artwork is a violet tile with a waveform whose bars form a "V" (for Verba),
-// and a single amber bar in the middle that doubles as a text cursor.
+// The artwork is a dark tile with a bold "V" (cream left arm, amber right arm that overlaps it)
+// followed by an amber text cursor, so it reads as "V|": words being typed.
 import AppKit
 
 struct IconSize {
@@ -34,79 +34,83 @@ func color(_ hex: UInt32, alpha: CGFloat = 1) -> NSColor {
     )
 }
 
-func barRects() -> [NSRect] {
-    let heights: [CGFloat] = [440, 340, 250, 160, 250, 340, 440]
-    let barWidth: CGFloat = 66
-    let gap: CGFloat = 36
-    let total = CGFloat(heights.count) * barWidth + CGFloat(heights.count - 1) * gap
-    var originX = (1024 - total) / 2
-
-    return heights.map { height in
-        let rect = NSRect(x: originX, y: 512 - height / 2, width: barWidth, height: height)
-        originX += barWidth + gap
-        return rect
-    }
+func makeShadow(offsetY: CGFloat, blur: CGFloat, alpha: CGFloat) -> NSShadow {
+    let shadow = NSShadow()
+    shadow.shadowOffset = NSSize(width: 0, height: -offsetY)
+    shadow.shadowBlurRadius = blur
+    shadow.shadowColor = NSColor.black.withAlphaComponent(alpha)
+    return shadow
 }
 
-func drawArtwork() {
-    // The tile follows Apple's template: 824pt artwork centered on a 1024pt canvas.
+/// Draws a straight line with rounded ends and a soft shadow.
+func strokeLine(from start: NSPoint, to end: NSPoint, width: CGFloat, fill: NSColor, shadow: NSShadow) {
+    NSGraphicsContext.saveGraphicsState()
+    shadow.set()
+    let path = NSBezierPath()
+    path.move(to: start)
+    path.line(to: end)
+    path.lineWidth = width
+    path.lineCapStyle = .round
+    fill.setStroke()
+    path.stroke()
+    NSGraphicsContext.restoreGraphicsState()
+}
+
+func drawTile() {
+    // Apple's template: 824pt artwork centered on a 1024pt canvas.
     let artwork = NSRect(x: 100, y: 100, width: 824, height: 824)
     let tile = NSBezierPath(roundedRect: artwork, xRadius: 185, yRadius: 185)
 
-    // Soft shadow under the tile.
+    // Shadow pass: gradients don't cast shadows reliably, so fill a solid shape first.
     NSGraphicsContext.saveGraphicsState()
-    let tileShadow = NSShadow()
-    tileShadow.shadowOffset = NSSize(width: 0, height: -14)
-    tileShadow.shadowBlurRadius = 28
-    tileShadow.shadowColor = NSColor.black.withAlphaComponent(0.35)
-    tileShadow.set()
-    color(0x3E31B8).setFill()
+    makeShadow(offsetY: 14, blur: 28, alpha: 0.35).set()
+    color(0x15151B).setFill()
     tile.fill()
     NSGraphicsContext.restoreGraphicsState()
 
-    // Background gradient, light at the top and deep at the bottom.
-    NSGradient(colors: [color(0x9A8BFF), color(0x4A3BD0)])?.draw(in: tile, angle: -90)
+    // Dark gradient, slightly lighter at the top.
+    NSGradient(colors: [color(0x262731), color(0x0C0C11)])?.draw(in: tile, angle: -90)
 
-    // Gentle sheen across the top.
-    NSGradient(starting: color(0xFFFFFF, alpha: 0.24), ending: color(0xFFFFFF, alpha: 0))?
-        .draw(in: tile, angle: -90)
-
-    // Thin inner edge so the tile reads clearly on dark backgrounds.
+    // Thin inner edge so the tile reads on dark backgrounds.
     NSGraphicsContext.saveGraphicsState()
     tile.addClip()
     tile.lineWidth = 6
-    color(0xFFFFFF, alpha: 0.14).setStroke()
+    color(0xFFFFFF, alpha: 0.08).setStroke()
     tile.stroke()
     NSGraphicsContext.restoreGraphicsState()
-
-    drawBars()
 }
 
-func drawBars() {
-    let rects = barRects()
-    let centerIndex = rects.count / 2
+func drawMark() {
+    let strokeWidth: CGFloat = 112
+    let apexX: CGFloat = 446
+    let topY: CGFloat = 728
+    let tipY: CGFloat = 296
+    let halfSpan: CGFloat = 168
 
-    // Shadow pass: gradients don't cast shadows reliably, so fill solid shapes first.
-    NSGraphicsContext.saveGraphicsState()
-    let barShadow = NSShadow()
-    barShadow.shadowOffset = NSSize(width: 0, height: -8)
-    barShadow.shadowBlurRadius = 20
-    barShadow.shadowColor = NSColor.black.withAlphaComponent(0.28)
-    barShadow.set()
-    color(0xFFFFFF).setFill()
-    for rect in rects {
-        NSBezierPath(roundedRect: rect, xRadius: rect.width / 2, yRadius: rect.width / 2).fill()
-    }
-    NSGraphicsContext.restoreGraphicsState()
+    // Cream left arm, then the amber right arm on top of it.
+    strokeLine(
+        from: NSPoint(x: apexX - halfSpan, y: topY),
+        to: NSPoint(x: apexX, y: tipY),
+        width: strokeWidth,
+        fill: color(0xF6F1E7),
+        shadow: makeShadow(offsetY: 10, blur: 20, alpha: 0.4)
+    )
+    strokeLine(
+        from: NSPoint(x: apexX, y: tipY),
+        to: NSPoint(x: apexX + halfSpan, y: topY),
+        width: strokeWidth,
+        fill: color(0xFFB347),
+        shadow: makeShadow(offsetY: 6, blur: 18, alpha: 0.5)
+    )
 
-    // Color pass.
-    for (index, rect) in rects.enumerated() {
-        let bar = NSBezierPath(roundedRect: rect, xRadius: rect.width / 2, yRadius: rect.width / 2)
-        let colors = index == centerIndex
-            ? [color(0xFFD27A), color(0xFFAE42)]
-            : [color(0xFFFFFF), color(0xDDD7FF)]
-        NSGradient(colors: colors)?.draw(in: bar, angle: -90)
-    }
+    // Text cursor.
+    strokeLine(
+        from: NSPoint(x: 790, y: tipY),
+        to: NSPoint(x: 790, y: 554),
+        width: 48,
+        fill: color(0xFFB347),
+        shadow: makeShadow(offsetY: 8, blur: 16, alpha: 0.4)
+    )
 }
 
 func renderIcon(pixels: Int) -> Data? {
@@ -131,7 +135,8 @@ func renderIcon(pixels: Int) -> Data? {
     let transform = NSAffineTransform()
     transform.scale(by: CGFloat(pixels) / 1024)
     transform.concat()
-    drawArtwork()
+    drawTile()
+    drawMark()
 
     NSGraphicsContext.restoreGraphicsState()
     return bitmap.representation(using: .png, properties: [:])

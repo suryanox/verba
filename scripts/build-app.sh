@@ -10,7 +10,8 @@ app="$build_root/Verba.app"
 cd "$project_root"
 swift build -c "$configuration"
 
-if [[ ! -f "$project_root/Config/AppIcon.icns" ]]; then
+icon="$project_root/Config/AppIcon.icns"
+if [[ ! -f "$icon" || "$project_root/scripts/make-icon.swift" -nt "$icon" ]]; then
     zsh "$project_root/scripts/make-icon.sh"
 fi
 
