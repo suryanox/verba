@@ -1,4 +1,4 @@
-.PHONY: check build test lint app
+.PHONY: check build test lint app icon
 
 check: lint test build
 
@@ -12,4 +12,7 @@ lint:
 	swiftlint lint --strict
 
 app:
-	./scripts/build-app.sh
+	zsh scripts/build-app.sh
+
+icon:
+	zsh scripts/make-icon.sh

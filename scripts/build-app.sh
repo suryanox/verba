@@ -10,10 +10,15 @@ app="$build_root/Verba.app"
 cd "$project_root"
 swift build -c "$configuration"
 
+if [[ ! -f "$project_root/Config/AppIcon.icns" ]]; then
+    zsh "$project_root/scripts/make-icon.sh"
+fi
+
 rm -rf "$app"
-mkdir -p "$app/Contents/MacOS"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary" "$app/Contents/MacOS/Verba"
 cp "$project_root/Config/Info.plist" "$app/Contents/Info.plist"
+cp "$project_root/Config/AppIcon.icns" "$app/Contents/Resources/AppIcon.icns"
 printf 'APPL????' > "$app/Contents/PkgInfo"
 codesign --force --deep --sign - --timestamp=none "$app" >/dev/null
 
