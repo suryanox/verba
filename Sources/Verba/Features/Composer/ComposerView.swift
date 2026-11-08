@@ -8,12 +8,16 @@ struct ComposerView: View {
     @State private var showSettings = false
     @State private var chromeVisible = true
 
-    private var theme: ComposerTheme { preferences.theme }
+    private var theme: ComposerTheme {
+        preferences.theme
+    }
 
     /// In focus mode the header and toolbar fade out while typing and return when the mouse moves.
     private var isChromeHidden: Bool {
         guard preferences.focusMode, !chromeVisible, !showSettings else { return false }
-        if case .error = model.phase { return false }
+        if case .error = model.phase {
+            return false
+        }
         return !model.isRecording && !model.isBusy
     }
 
@@ -41,6 +45,8 @@ struct ComposerView: View {
             VStack(spacing: 12) {
                 Spacer(minLength: 0)
                 errorBanner
+                promptCard
+                promptToggle
                 ComposerDock(model: model, theme: theme)
             }
             .padding(.horizontal, 24)
@@ -54,10 +60,14 @@ struct ComposerView: View {
         .animation(.easeInOut(duration: 0.2), value: isChromeHidden)
         .animation(.snappy(duration: 0.25), value: model.phase)
         .onChange(of: model.text) { _, _ in
-            if preferences.focusMode { chromeVisible = false }
+            if preferences.focusMode {
+                chromeVisible = false
+            }
         }
         .onContinuousHover { phase in
-            if case .active = phase { chromeVisible = true }
+            if case .active = phase {
+                chromeVisible = true
+            }
         }
     }
 
@@ -87,6 +97,74 @@ struct ComposerView: View {
         .padding(.horizontal, 28)
         .padding(.top, 80)
         .allowsHitTesting(false)
+    }
+
+    // MARK: - Prompt mode
+
+    private var promptToggle: some View {
+        Toggle(isOn: $model.isPromptMode) {
+            Text("Dictate a prompt")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(model.isPromptMode ? theme.text : theme.muted)
+        }
+        .toggleStyle(.checkbox)
+        .tint(theme.accent)
+        .disabled(model.isRecording || model.isBusy)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .background(theme.surface, in: Capsule())
+        .overlay(Capsule().stroke(theme.border))
+        .help("Send what you dictate to the on-device AI as a prompt. Its answer is added to your document.")
+    }
+
+    /// Shows the prompt as you speak it, then while the AI is working on it.
+    @ViewBuilder
+    private var promptCard: some View {
+        if model.isPromptActive {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(theme.accent)
+                    .padding(.top, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model.isRecording ? "SAY YOUR PROMPT" : "THINKING")
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(1)
+                        .foregroundStyle(theme.muted)
+                    Text(model.promptText.isEmpty ? "Listening…" : model.promptText)
+                        .font(.system(size: 14))
+                        .foregroundStyle(model.promptText.isEmpty ? theme.muted : theme.text)
+                        .lineLimit(4)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 8)
+
+                if model.isRecording {
+                    Button { model.cancelPrompt() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(DockButtonStyle(theme: theme))
+                    .keyboardShortcut(.cancelAction)
+                    .help("Cancel  Esc")
+                } else {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 28, height: 28)
+                }
+            }
+            .padding(.leading, 16)
+            .padding(.trailing, 8)
+            .padding(.vertical, 10)
+            .frame(maxWidth: 620, alignment: .leading)
+            .background(theme.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(theme.border))
+            .shadow(color: .black.opacity(theme.isDark ? 0.35 : 0.1), radius: 16, y: 6)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
     // MARK: - Header

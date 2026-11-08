@@ -17,33 +17,64 @@ enum ComposerTheme: String, CaseIterable, Identifiable {
         let accent: UInt32
     }
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
-    var title: String { rawValue.capitalized }
+    var title: String {
+        rawValue.capitalized
+    }
 
-    var isDark: Bool { self == .midnight || self == .graphite }
+    var isDark: Bool {
+        self == .midnight || self == .graphite
+    }
 
-    var nsBackground: NSColor { NSColor(hex: palette.background) }
-    var nsText: NSColor { NSColor(hex: palette.text) }
-    var nsAccent: NSColor { NSColor(hex: palette.accent) }
+    var nsBackground: NSColor {
+        NSColor(hex: palette.background)
+    }
 
-    var background: Color { Color(nsColor: nsBackground) }
-    var surface: Color { Color(nsColor: NSColor(hex: palette.surface)) }
-    var text: Color { Color(nsColor: nsText) }
-    var muted: Color { Color(nsColor: NSColor(hex: palette.muted)) }
-    var accent: Color { Color(nsColor: nsAccent) }
-    var border: Color { text.opacity(isDark ? 0.10 : 0.13) }
+    var nsText: NSColor {
+        NSColor(hex: palette.text)
+    }
+
+    var nsAccent: NSColor {
+        NSColor(hex: palette.accent)
+    }
+
+    var background: Color {
+        Color(nsColor: nsBackground)
+    }
+
+    var surface: Color {
+        Color(nsColor: NSColor(hex: palette.surface))
+    }
+
+    var text: Color {
+        Color(nsColor: nsText)
+    }
+
+    var muted: Color {
+        Color(nsColor: NSColor(hex: palette.muted))
+    }
+
+    var accent: Color {
+        Color(nsColor: nsAccent)
+    }
+
+    var border: Color {
+        text.opacity(isDark ? 0.10 : 0.13)
+    }
 
     private var palette: Palette {
         switch self {
         case .midnight:
-            return Palette(background: 0x0F1014, surface: 0x181A21, text: 0xE9E7E2, muted: 0x868A96, accent: 0x7C6CF2)
+            Palette(background: 0x0F1014, surface: 0x181A21, text: 0xE9E7E2, muted: 0x868A96, accent: 0x7C6CF2)
         case .graphite:
-            return Palette(background: 0x1C1C1E, surface: 0x27272A, text: 0xEDEDED, muted: 0x8D8D93, accent: 0x2E9488)
+            Palette(background: 0x1C1C1E, surface: 0x27272A, text: 0xEDEDED, muted: 0x8D8D93, accent: 0x2E9488)
         case .paper:
-            return Palette(background: 0xF6F3EC, surface: 0xFFFFFF, text: 0x25221E, muted: 0x8A857A, accent: 0xC8553A)
+            Palette(background: 0xF6F3EC, surface: 0xFFFFFF, text: 0x25221E, muted: 0x8A857A, accent: 0xC8553A)
         case .sepia:
-            return Palette(background: 0xEEE2CB, surface: 0xF7EEDC, text: 0x3A2E21, muted: 0x8A7962, accent: 0x8F5A2B)
+            Palette(background: 0xEEE2CB, surface: 0xF7EEDC, text: 0x3A2E21, muted: 0x8A7962, accent: 0x8F5A2B)
         }
     }
 }
@@ -56,34 +87,35 @@ enum ComposerFont: String, CaseIterable, Identifiable {
     case mono
     case rounded
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var title: String {
         switch self {
-        case .serif: return "Serif"
-        case .sans: return "Sans"
-        case .mono: return "Mono"
-        case .rounded: return "Round"
+        case .serif: "Serif"
+        case .sans: "Sans"
+        case .mono: "Mono"
+        case .rounded: "Round"
         }
     }
 
     var swiftUIDesign: Font.Design {
         switch self {
-        case .serif: return .serif
-        case .sans: return .default
-        case .mono: return .monospaced
-        case .rounded: return .rounded
+        case .serif: .serif
+        case .sans: .default
+        case .mono: .monospaced
+        case .rounded: .rounded
         }
     }
 
     func nsFont(size: CGFloat) -> NSFont {
         let base = NSFont.systemFont(ofSize: size, weight: .regular)
-        let design: NSFontDescriptor.SystemDesign?
-        switch self {
-        case .serif: design = .serif
-        case .sans: design = nil
-        case .mono: design = .monospaced
-        case .rounded: design = .rounded
+        let design: NSFontDescriptor.SystemDesign? = switch self {
+        case .serif: .serif
+        case .sans: nil
+        case .mono: .monospaced
+        case .rounded: .rounded
         }
         guard let design, let descriptor = base.fontDescriptor.withDesign(design) else { return base }
         return NSFont(descriptor: descriptor, size: size) ?? base
@@ -95,15 +127,19 @@ enum ComposerColumn: String, CaseIterable, Identifiable {
     case comfortable
     case wide
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
-    var title: String { rawValue.capitalized }
+    var title: String {
+        rawValue.capitalized
+    }
 
     var width: CGFloat {
         switch self {
-        case .narrow: return 560
-        case .comfortable: return 700
-        case .wide: return 880
+        case .narrow: 560
+        case .comfortable: 700
+        case .wide: 880
         }
     }
 }
@@ -118,18 +154,23 @@ final class ComposerPreferences: ObservableObject {
     @Published var theme: ComposerTheme {
         didSet { defaults.set(theme.rawValue, forKey: Keys.theme) }
     }
+
     @Published var font: ComposerFont {
         didSet { defaults.set(font.rawValue, forKey: Keys.font) }
     }
+
     @Published var fontSize: Double {
         didSet { defaults.set(fontSize, forKey: Keys.fontSize) }
     }
+
     @Published var lineHeight: Double {
         didSet { defaults.set(lineHeight, forKey: Keys.lineHeight) }
     }
+
     @Published var column: ComposerColumn {
         didSet { defaults.set(column.rawValue, forKey: Keys.column) }
     }
+
     @Published var focusMode: Bool {
         didSet { defaults.set(focusMode, forKey: Keys.focusMode) }
     }

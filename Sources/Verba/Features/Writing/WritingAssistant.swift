@@ -5,6 +5,8 @@ enum WritingAction: Equatable, Sendable {
     case professionalize
     case makeConcise
     case changeTone(String)
+    /// Treats the text as an instruction to follow, rather than text to rewrite.
+    case answerPrompt
 }
 
 @MainActor

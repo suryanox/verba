@@ -28,7 +28,7 @@ final class StartupWindowController: NSWindowController {
     }
 
     @available(*, unavailable)
-    required init?(coder: NSCoder) {
+    required init?(coder _: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -95,7 +95,7 @@ final class StartupWindowController: NSWindowController {
             speechStatus,
             accessibilityButton,
             speechButton,
-            refreshButton
+            refreshButton,
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -108,7 +108,7 @@ final class StartupWindowController: NSWindowController {
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
             stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
-            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 24)
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 24),
         ])
     }
 

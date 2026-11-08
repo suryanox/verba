@@ -6,14 +6,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let permissions = PermissionCoordinator()
     private var mainWindow: MainWindowController?
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    func applicationDidFinishLaunching(_: Notification) {
         AppMenu.install()
         permissions.requestAll()
         mainWindow = MainWindowController(model: composerModel)
         mainWindow?.present()
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    func applicationWillTerminate(_: Notification) {
         composerModel.flushDraft()
     }
 }

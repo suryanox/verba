@@ -10,8 +10,7 @@ final class SpeechTranscriber: Transcriber {
     }
 
     func transcribe(audio: URL) async throws -> String {
-        guard let recognizer else { throw SpeechTranscriptionError.unavailable }
-        guard recognizer.isAvailable else { throw SpeechTranscriptionError.unavailable }
+        guard let recognizer, recognizer.isAvailable else { throw SpeechTranscriptionError.unavailable }
         try await requestAuthorization()
 
         let request = SFSpeechURLRecognitionRequest(url: audio)
@@ -37,7 +36,9 @@ final class SpeechTranscriber: Transcriber {
         }
 
         let status = SFSpeechRecognizer.authorizationStatus()
-        if status == .authorized { return }
+        if status == .authorized {
+            return
+        }
         guard status == .notDetermined else {
             throw SpeechTranscriptionError.notAuthorized
         }
@@ -60,9 +61,9 @@ enum SpeechTranscriptionError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .unavailable:
-            return "Apple Speech Recognition is unavailable right now."
+            "Apple Speech Recognition is unavailable right now."
         case .notAuthorized:
-            return "Speech Recognition is not authorized for this Verba app build."
+            "Speech Recognition is not authorized for this Verba app build."
         }
     }
 }

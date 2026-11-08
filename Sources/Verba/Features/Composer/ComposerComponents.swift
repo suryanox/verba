@@ -19,7 +19,9 @@ struct DockHover: ViewModifier {
 
     private var fillOpacity: Double {
         guard isEnabled else { return 0 }
-        if isPressed { return 0.16 }
+        if isPressed {
+            return 0.16
+        }
         return isHovered ? 0.08 : 0
     }
 }
@@ -72,7 +74,7 @@ struct WaveformView: View {
         TimelineView(.animation) { context in
             let time = context.date.timeIntervalSinceReferenceDate
             HStack(spacing: 2.5) {
-                ForEach(0..<5, id: \.self) { index in
+                ForEach(0 ..< 5, id: \.self) { index in
                     Capsule()
                         .fill(color)
                         .frame(width: 3, height: 6 + 12 * abs(sin(time * 4 + Double(index) * 0.9)))

@@ -1,5 +1,5 @@
-import ApplicationServices
 import AppKit
+import ApplicationServices
 import CoreGraphics
 import os
 
@@ -50,14 +50,15 @@ struct FocusedTextTargetProvider {
         kAXTextFieldRole as String,
         kAXTextAreaRole as String,
         kAXComboBoxRole as String,
-        kAXTextFieldRole as String
+        kAXTextFieldRole as String,
     ]
 
     private func focusedElement() -> AXUIElement? {
         if let frontmostApplication = NSWorkspace.shared.frontmostApplication {
             let application = AXUIElementCreateApplication(frontmostApplication.processIdentifier)
             if let value = copyAttribute(kAXFocusedUIElementAttribute as CFString, from: application),
-               CFGetTypeID(value) == AXUIElementGetTypeID() {
+               CFGetTypeID(value) == AXUIElementGetTypeID()
+            {
                 return unsafeDowncast(value, to: AXUIElement.self)
             }
         }

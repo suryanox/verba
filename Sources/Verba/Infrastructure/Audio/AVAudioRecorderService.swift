@@ -5,7 +5,9 @@ import Foundation
 final class AVAudioRecorderService: NSObject, AudioRecorder {
     private var recorder: AVAudioRecorder?
 
-    var isRecording: Bool { recorder?.isRecording == true }
+    var isRecording: Bool {
+        recorder?.isRecording == true
+    }
 
     func start() throws {
         guard !isRecording else { return }
@@ -15,9 +17,9 @@ final class AVAudioRecorderService: NSObject, AudioRecorder {
             .appendingPathExtension("m4a")
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44_100,
+            AVSampleRateKey: 44100,
             AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
         ]
         let recorder = try AVAudioRecorder(url: url, settings: settings)
         recorder.prepareToRecord()

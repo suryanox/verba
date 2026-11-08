@@ -4,6 +4,8 @@ struct WritingPromptBuilder {
     func prompt(for action: WritingAction, text: String) -> String {
         let instruction: String
         switch action {
+        case .answerPrompt:
+            return answerPrompt(for: text)
         case .improveGrammar:
             instruction = "Correct grammar, spelling, punctuation, and awkward phrasing."
         case .professionalize:
@@ -22,6 +24,18 @@ struct WritingPromptBuilder {
 
         Text:
         \(text)
+        """
+    }
+
+    private func answerPrompt(for request: String) -> String {
+        """
+        Follow the request below and write exactly what it asks for.
+
+        The request was dictated by voice, so ignore filler words and minor transcription mistakes.
+        Return only the finished text, without quotation marks, a preamble, or commentary.
+
+        Request:
+        \(request)
         """
     }
 }

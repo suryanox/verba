@@ -13,7 +13,7 @@ private final class SpeechStub: LiveSpeechSession {
 
 @MainActor
 private struct UppercasingAssistant: WritingAssistant {
-    func transform(_ text: String, using action: WritingAction) async throws -> String {
+    func transform(_ text: String, using _: WritingAction) async throws -> String {
         text.uppercased()
     }
 }
@@ -38,7 +38,7 @@ private func makeModel(defaults: UserDefaults) -> ComposerViewModel {
 @Test("History skips empty and duplicate snapshots")
 @MainActor
 func historySkipsEmptyAndDuplicates() throws {
-    let model = makeModel(defaults: try makeDefaults())
+    let model = try makeModel(defaults: makeDefaults())
 
     model.saveVersion("Empty")
     #expect(model.history.isEmpty)
@@ -54,7 +54,7 @@ func historySkipsEmptyAndDuplicates() throws {
 @Test("Restoring a version brings the text back and keeps the current text in history")
 @MainActor
 func restoreKeepsCurrentText() throws {
-    let model = makeModel(defaults: try makeDefaults())
+    let model = try makeModel(defaults: makeDefaults())
 
     model.text = "One"
     model.saveVersion("One")
@@ -70,7 +70,7 @@ func restoreKeepsCurrentText() throws {
 @Test("Clearing the document keeps a restorable copy")
 @MainActor
 func clearKeepsRestorableCopy() throws {
-    let model = makeModel(defaults: try makeDefaults())
+    let model = try makeModel(defaults: makeDefaults())
 
     model.text = "Keep me"
     model.clear()
@@ -82,11 +82,11 @@ func clearKeepsRestorableCopy() throws {
 @Test("A writing action saves the text before and after the change")
 @MainActor
 func writingActionSavesSnapshots() async throws {
-    let model = makeModel(defaults: try makeDefaults())
+    let model = try makeModel(defaults: makeDefaults())
 
     model.text = "hello"
     model.apply(.improveGrammar)
-    for _ in 0..<100 where model.isBusy {
+    for _ in 0 ..< 100 where model.isBusy {
         try? await Task.sleep(for: .milliseconds(10))
     }
 

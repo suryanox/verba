@@ -92,7 +92,9 @@ struct ComposerDock: View {
     }
 
     private var isToneBusy: Bool {
-        if case .enhancing(.changeTone) = model.phase { return true }
+        if case .enhancing(.changeTone) = model.phase {
+            return true
+        }
         return false
     }
 
@@ -133,13 +135,13 @@ private struct DictationButton: View {
                 if case let .recording(startedAt) = model.phase {
                     WaveformView(color: .white)
                     timer(since: startedAt)
-                    Text("Stop")
+                    Text(model.isPromptMode ? "Send" : "Stop")
                         .font(.system(size: 12.5, weight: .semibold))
                 } else {
-                    Image(systemName: "mic.fill")
+                    Image(systemName: model.isPromptMode ? "sparkles" : "mic.fill")
                         .font(.system(size: 14, weight: .semibold))
                     if showTitle {
-                        Text("Dictate")
+                        Text(model.isPromptMode ? "Ask" : "Dictate")
                             .font(.system(size: 12.5, weight: .semibold))
                     }
                 }
@@ -159,7 +161,14 @@ private struct DictationButton: View {
         .buttonStyle(.plain)
         .keyboardShortcut(.space, modifiers: .option)
         .disabled(model.isBusy)
-        .help(model.isRecording ? "Stop dictation  ⌥Space" : "Start dictation  ⌥Space")
+        .help(helpText)
+    }
+
+    private var helpText: String {
+        if model.isRecording {
+            return model.isPromptMode ? "Send prompt  ⌥Space" : "Stop dictation  ⌥Space"
+        }
+        return model.isPromptMode ? "Dictate a prompt  ⌥Space" : "Start dictation  ⌥Space"
     }
 
     private func timer(since startedAt: Date) -> some View {

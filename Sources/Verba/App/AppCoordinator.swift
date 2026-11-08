@@ -49,7 +49,7 @@ final class AppCoordinator {
         }
         capture.onError = { [weak self] error in
             guard let self else { return }
-            self.overlay.showError(error.localizedDescription, near: self.activeTarget?.frame)
+            self.overlay.showError(error.localizedDescription, near: activeTarget?.frame)
         }
         overlay.model.onStop = { [weak self] in
             self?.capture.stop()
@@ -91,9 +91,9 @@ final class AppCoordinator {
             do {
                 let transformed = try await writingAssistant.transform(reviewedText, using: action)
                 self.reviewedText = transformed
-                self.overlay.showReview(transcript: transformed, near: self.activeTarget?.frame)
+                overlay.showReview(transcript: transformed, near: activeTarget?.frame)
             } catch {
-                self.overlay.showReview(transcript: reviewedText, near: self.activeTarget?.frame)
+                overlay.showReview(transcript: reviewedText, near: activeTarget?.frame)
             }
         }
     }
@@ -101,9 +101,9 @@ final class AppCoordinator {
     private static func makeWritingAssistant() -> WritingAssistant {
         if #available(macOS 26.0, *) {
             #if canImport(FoundationModels)
-            return FoundationModelsWritingAssistant()
+                return FoundationModelsWritingAssistant()
             #else
-            return UnavailableWritingAssistant()
+                return UnavailableWritingAssistant()
             #endif
         }
         return UnavailableWritingAssistant()

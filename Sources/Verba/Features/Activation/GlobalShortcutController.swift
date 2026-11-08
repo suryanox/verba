@@ -10,7 +10,10 @@ final class GlobalShortcutController: ActivationController {
     private var hotKey: EventHotKeyRef?
     private var monitors: [Any] = []
 
-    var isEnabled: Bool { hotKey != nil || !monitors.isEmpty }
+    var isEnabled: Bool {
+        hotKey != nil || !monitors.isEmpty
+    }
+
     var onActivation: (() -> Void)?
 
     init(configuration: ShortcutConfiguration = .default) {
@@ -87,8 +90,8 @@ final class GlobalShortcutController: ActivationController {
             }
         }
         let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, self.configuration.matches(event) else { return event }
-            self.handleActivation()
+            guard let self, configuration.matches(event) else { return event }
+            handleActivation()
             return nil
         }
         monitors = [globalMonitor, localMonitor].compactMap { $0 }

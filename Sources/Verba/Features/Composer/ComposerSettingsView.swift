@@ -4,7 +4,9 @@ import SwiftUI
 struct ComposerSettingsView: View {
     @ObservedObject var preferences: ComposerPreferences
 
-    private var theme: ComposerTheme { preferences.theme }
+    private var theme: ComposerTheme {
+        preferences.theme
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -27,11 +29,11 @@ struct ComposerSettingsView: View {
             }
 
             section("Size", value: "\(Int(preferences.fontSize)) pt") {
-                Slider(value: $preferences.fontSize, in: 14...34, step: 1)
+                Slider(value: $preferences.fontSize, in: 14 ... 34, step: 1)
             }
 
             section("Line spacing", value: String(format: "%.2f", preferences.lineHeight)) {
-                Slider(value: $preferences.lineHeight, in: 1.1...2.0)
+                Slider(value: $preferences.lineHeight, in: 1.1 ... 2.0)
             }
 
             section("Column") {
@@ -70,10 +72,10 @@ struct ComposerSettingsView: View {
         .preferredColorScheme(theme.isDark ? .dark : .light)
     }
 
-    private func section<Content: View>(
+    private func section(
         _ title: String,
         value: String? = nil,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: () -> some View
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {

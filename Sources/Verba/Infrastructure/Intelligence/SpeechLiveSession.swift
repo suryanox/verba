@@ -41,7 +41,7 @@ final class SpeechLiveSession: LiveSpeechSession {
         let format = inputNode.outputFormat(forBus: 0)
         inputNode.installTap(
             onBus: 0,
-            bufferSize: 1_024,
+            bufferSize: 1024,
             format: format,
             block: makeAudioTap(for: request)
         )
@@ -94,7 +94,9 @@ final class SpeechLiveSession: LiveSpeechSession {
         }
 
         let status = SFSpeechRecognizer.authorizationStatus()
-        if status == .authorized { return }
+        if status == .authorized {
+            return
+        }
         guard status == .notDetermined else {
             throw SpeechTranscriptionError.notAuthorized
         }

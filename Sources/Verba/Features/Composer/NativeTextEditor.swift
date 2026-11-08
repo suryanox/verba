@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 enum NativeTextEditorActions {
-    private static weak var activeTextView: NSTextView?
+    private weak static var activeTextView: NSTextView?
 
     static func register(_ textView: NSTextView) {
         activeTextView = textView
@@ -44,7 +44,7 @@ struct EditorStyle: Equatable {
             Self.rgba(caretColor),
             Self.rgba(selectionColor),
             String(format: "%.2f", lineHeightMultiple),
-            String(format: "%.0f", columnWidth)
+            String(format: "%.0f", columnWidth),
         ].joined(separator: "|")
     }
 
@@ -172,8 +172,7 @@ struct NativeTextEditor: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             // Skip echoes of changes that came from the model, to avoid writing state during a view update.
-            guard !isApplyingExternalChange else { return }
-            guard let textView = notification.object as? NSTextView else { return }
+            guard !isApplyingExternalChange, let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
         }
     }
@@ -197,7 +196,7 @@ private extension NSTextView {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: style.font,
             .foregroundColor: style.textColor,
-            .paragraphStyle: paragraph
+            .paragraphStyle: paragraph,
         ]
 
         insertionPointColor = style.caretColor
@@ -239,7 +238,7 @@ private final class NativeTextView: NSTextView {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             NativeTextEditorActions.register(self)
-            self.window?.makeFirstResponder(self)
+            window?.makeFirstResponder(self)
         }
     }
 

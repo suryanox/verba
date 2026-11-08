@@ -4,10 +4,10 @@ import PackageDescription
 let package = Package(
     name: "Verba",
     platforms: [
-        .macOS(.v15)
+        .macOS(.v15),
     ],
     products: [
-        .executable(name: "Verba", targets: ["Verba"])
+        .executable(name: "Verba", targets: ["Verba"]),
     ],
     targets: [
         .executableTarget(
@@ -22,14 +22,14 @@ let package = Package(
                     "-Xlinker",
                     "__info_plist",
                     "-Xlinker",
-                    "Config/Info.plist"
-                ])
+                    "Config/Info.plist",
+                ]),
             ]
         ),
         .testTarget(
             name: "VerbaTests",
             dependencies: ["Verba"],
             path: "Tests/VerbaTests"
-        )
+        ),
     ]
 )

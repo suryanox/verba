@@ -7,7 +7,8 @@ final class PermissionCoordinator {
             print("Verba: microphone permission = \(granted)")
         }
         guard Bundle.main.bundleURL.pathExtension == "app",
-              Bundle.main.object(forInfoDictionaryKey: "NSSpeechRecognitionUsageDescription") != nil else {
+              Bundle.main.object(forInfoDictionaryKey: "NSSpeechRecognitionUsageDescription") != nil
+        else {
             print("Verba: speech permission skipped outside an app bundle")
             return
         }

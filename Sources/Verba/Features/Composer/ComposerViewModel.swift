@@ -24,13 +24,19 @@ final class ComposerViewModel: ObservableObject {
     @Published var text = "" {
         didSet { scheduleDraftSave() }
     }
+
     @Published var title = "" {
         didSet { scheduleDraftSave() }
     }
+
     @Published private(set) var phase: ComposerPhase = .ready
     @Published private(set) var hasCopied = false
     /// Newest first.
     @Published private(set) var history: [DocumentVersion] = []
+    /// When on, dictation is sent to the on-device AI as an instruction instead of being typed into the document.
+    @Published var isPromptMode = false
+    /// The prompt being dictated, or answered, in prompt mode.
+    @Published private(set) var promptText = ""
 
     private let liveSpeech: LiveSpeechSession
     private let writingAssistant: WritingAssistant
@@ -56,14 +62,16 @@ final class ComposerViewModel: ObservableObject {
     // MARK: - State
 
     var isRecording: Bool {
-        if case .recording = phase { return true }
+        if case .recording = phase {
+            return true
+        }
         return false
     }
 
     var isBusy: Bool {
         switch phase {
-        case .enhancing: return true
-        default: return false
+        case .enhancing: true
+        default: false
         }
     }
 
@@ -73,6 +81,10 @@ final class ComposerViewModel: ObservableObject {
 
     var canRestoreHistory: Bool {
         !isRecording && !isBusy
+    }
+
+    var isPromptActive: Bool {
+        (isPromptMode && isRecording) || phase == .enhancing(.answerPrompt)
     }
 
     var wordCount: Int {
@@ -96,8 +108,13 @@ final class ComposerViewModel: ObservableObject {
     func startRecording() {
         recordingGeneration += 1
         let generation = recordingGeneration
-        saveVersion("Before dictation")
-        baseText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isPrompt = isPromptMode
+        if isPrompt {
+            promptText = ""
+        } else {
+            saveVersion("Before dictation")
+            baseText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         phase = .recording(startedAt: .now)
         hasCopied = false
         Task { [weak self] in
@@ -106,8 +123,12 @@ final class ComposerViewModel: ObservableObject {
                 let partialTexts = try await liveSpeech.start()
                 for await partialText in partialTexts {
                     guard recordingGeneration == generation, isRecording else { return }
-                    let separator = baseText.isEmpty ? "" : " "
-                    text = baseText + separator + partialText
+                    if isPrompt {
+                        promptText = partialText
+                    } else {
+                        let separator = baseText.isEmpty ? "" : " "
+                        text = baseText + separator + partialText
+                    }
                 }
                 guard recordingGeneration == generation, isRecording else {
                     liveSpeech.stop()
@@ -127,7 +148,22 @@ final class ComposerViewModel: ObservableObject {
         liveSpeech.stop()
         baseText = ""
         phase = .ready
-        saveVersion("Dictation")
+
+        if isPromptMode {
+            sendPrompt(promptText.trimmingCharacters(in: .whitespacesAndNewlines))
+        } else {
+            saveVersion("Dictation")
+        }
+    }
+
+    /// Stops listening in prompt mode without sending anything to the AI.
+    func cancelPrompt() {
+        guard isRecording else { return }
+
+        recordingGeneration += 1
+        liveSpeech.stop()
+        promptText = ""
+        phase = .ready
     }
 
     // MARK: - Writing tools
@@ -149,12 +185,37 @@ final class ComposerViewModel: ObservableObject {
         }
     }
 
+    /// Sends a dictated prompt to the AI and appends its answer below the existing text.
+    private func sendPrompt(_ prompt: String) {
+        guard !prompt.isEmpty else {
+            promptText = ""
+            return
+        }
+        saveVersion("Before prompt")
+        phase = .enhancing(.answerPrompt)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let answer = try await writingAssistant.transform(prompt, using: .answerPrompt)
+                let existing = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                text = existing.isEmpty ? answer : existing + "\n\n" + answer
+                promptText = ""
+                phase = .ready
+                saveVersion("Prompt")
+            } catch {
+                promptText = ""
+                phase = .error(error.localizedDescription)
+            }
+        }
+    }
+
     private static func name(of action: WritingAction) -> String {
         switch action {
-        case .improveGrammar: return "grammar fix"
-        case .professionalize: return "polish"
-        case .makeConcise: return "shorten"
-        case let .changeTone(tone): return "\(tone.lowercased()) tone"
+        case .improveGrammar: "grammar fix"
+        case .professionalize: "polish"
+        case .makeConcise: "shorten"
+        case let .changeTone(tone): "\(tone.lowercased()) tone"
+        case .answerPrompt: "prompt"
         }
     }
 
@@ -227,7 +288,9 @@ final class ComposerViewModel: ObservableObject {
     // MARK: - Errors and settings
 
     func dismissError() {
-        if case .error = phase { phase = .ready }
+        if case .error = phase {
+            phase = .ready
+        }
     }
 
     func openSpeechSettings() {
@@ -287,9 +350,9 @@ final class ComposerViewModel: ObservableObject {
     private static func makeWritingAssistant() -> WritingAssistant {
         if #available(macOS 26.0, *) {
             #if canImport(FoundationModels)
-            return FoundationModelsWritingAssistant()
+                return FoundationModelsWritingAssistant()
             #else
-            return UnavailableWritingAssistant()
+                return UnavailableWritingAssistant()
             #endif
         }
         return UnavailableWritingAssistant()
