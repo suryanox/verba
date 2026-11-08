@@ -19,7 +19,10 @@ struct WritingPromptBuilder {
         return """
         \(instruction)
 
-        Preserve the original meaning exactly. Do not change the subject, speaker, grammatical person, pronouns, tense, aspect, modality, negation, facts, quantities, names, or point of view. If the text says "I", keep it in first person. Do not invent, omit, or add information. Only make the smallest changes required by the requested operation.
+        Preserve the original meaning exactly. Do not change the subject, speaker, grammatical person, \
+        pronouns, tense, aspect, modality, negation, facts, quantities, names, or point of view. \
+        If the text says "I", keep it in first person. Do not invent, omit, or add information. \
+        Only make the smallest changes required by the requested operation.
         Return only the rewritten text, without quotation marks or commentary.
 
         Text:

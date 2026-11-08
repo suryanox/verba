@@ -57,8 +57,7 @@ struct FocusedTextTargetProvider {
         if let frontmostApplication = NSWorkspace.shared.frontmostApplication {
             let application = AXUIElementCreateApplication(frontmostApplication.processIdentifier)
             if let value = copyAttribute(kAXFocusedUIElementAttribute as CFString, from: application),
-               CFGetTypeID(value) == AXUIElementGetTypeID()
-            {
+               CFGetTypeID(value) == AXUIElementGetTypeID() {
                 return unsafeDowncast(value, to: AXUIElement.self)
             }
         }
