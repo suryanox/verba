@@ -6,6 +6,10 @@ struct WritingPromptBuilder {
         switch action {
         case .answerPrompt:
             return answerPrompt(for: text)
+        case .condenseNotes:
+            return notesPrompt(for: text)
+        case .explainArticle:
+            return teacherPrompt(for: text)
         case .improveGrammar:
             instruction = "Correct grammar, spelling, punctuation, and awkward phrasing."
         case .professionalize:
@@ -39,6 +43,41 @@ struct WritingPromptBuilder {
 
         Request:
         \(request)
+        """
+    }
+
+    private func notesPrompt(for part: String) -> String {
+        """
+        Below is one part of a longer article. Write short bullet notes of its key facts and ideas.
+
+        Use at most 8 bullets, each one short line starting with "- ".
+        Only use what the text says. Do not add outside knowledge, opinions, or commentary.
+
+        Text:
+        \(part)
+        """
+    }
+
+    private func teacherPrompt(for article: String) -> String {
+        """
+        You are an old-school teacher explaining an article to a complete beginner who knows nothing about \
+        the subject.
+
+        Write exactly four short lines in plain text, with no markdown symbols and no bullets:
+        The idea: one sentence saying what this is really about.
+        Why it matters: one sentence.
+        How it works: two to four short sentences. Use one simple everyday comparison.
+        Remember: one short sentence the reader should take away.
+
+        Rules:
+        - Teach the idea itself. Never write "this article", "the author", "the text", or "the piece".
+        - Use short, plain words. Explain any technical word the first time you use it.
+        - No hype, no filler, no buzzwords, no opinions.
+        - Use only facts found below. Never invent details. If something is unclear, leave it out.
+        - Keep the whole answer under 110 words.
+
+        Article:
+        \(article)
         """
     }
 }

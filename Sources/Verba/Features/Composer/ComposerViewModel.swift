@@ -1,6 +1,5 @@
 import AppKit
 import Foundation
-import UniformTypeIdentifiers
 
 enum ComposerPhase: Equatable {
     case ready
@@ -37,10 +36,15 @@ final class ComposerViewModel: ObservableObject {
     @Published var isPromptMode = false
     /// The prompt being dictated, or answered, in prompt mode.
     @Published private(set) var promptText = ""
+    /// What the link explainer is doing right now, like "Reading the page…".
+    @Published private(set) var linkStatus = ""
+    /// True when the current error is about speech permissions, so the banner can offer to open Settings.
+    @Published private(set) var errorOpensSettings = false
 
     private let liveSpeech: LiveSpeechSession
     private let writingAssistant: WritingAssistant
-    private let defaults: UserDefaults
+    private let articleFetcher: any ArticleFetching
+    private let store: ComposerStore
     private var baseText = ""
     private var recordingGeneration = 0
     private var draftTask: Task<Void, Never>?
@@ -49,14 +53,16 @@ final class ComposerViewModel: ObservableObject {
     init(
         liveSpeech: LiveSpeechSession = SpeechLiveSession(),
         writingAssistant: WritingAssistant? = nil,
+        articleFetcher: any ArticleFetching = URLSessionArticleFetcher(),
         defaults: UserDefaults = .standard
     ) {
         self.liveSpeech = liveSpeech
         self.writingAssistant = writingAssistant ?? Self.makeWritingAssistant()
-        self.defaults = defaults
-        text = defaults.string(forKey: Self.textKey) ?? ""
-        title = defaults.string(forKey: Self.titleKey) ?? ""
-        history = Self.loadHistory(from: defaults)
+        self.articleFetcher = articleFetcher
+        store = ComposerStore(defaults: defaults)
+        text = store.loadText()
+        title = store.loadTitle()
+        history = store.loadHistory()
     }
 
     // MARK: - State
@@ -85,6 +91,10 @@ final class ComposerViewModel: ObservableObject {
 
     var isPromptActive: Bool {
         (isPromptMode && isRecording) || phase == .enhancing(.answerPrompt)
+    }
+
+    var isLinkActive: Bool {
+        phase == .enhancing(.explainArticle)
     }
 
     var wordCount: Int {
@@ -131,7 +141,7 @@ final class ComposerViewModel: ObservableObject {
                 }
             } catch {
                 guard recordingGeneration == generation else { return }
-                phase = .error(error.localizedDescription)
+                fail(error, opensSettings: true)
             }
         }
     }
@@ -185,7 +195,7 @@ final class ComposerViewModel: ObservableObject {
                 phase = .ready
                 saveVersion(Self.name(of: action).capitalized)
             } catch {
-                phase = .error(error.localizedDescription)
+                fail(error)
             }
         }
     }
@@ -201,17 +211,51 @@ final class ComposerViewModel: ObservableObject {
         Task { [weak self] in
             guard let self else { return }
             do {
-                let answer = try await writingAssistant.transform(prompt, using: .answerPrompt)
-                let existing = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                text = existing.isEmpty ? answer : existing + "\n\n" + answer
+                append(try await writingAssistant.transform(prompt, using: .answerPrompt))
                 promptText = ""
                 phase = .ready
                 saveVersion("Prompt")
             } catch {
                 promptText = ""
-                phase = .error(error.localizedDescription)
+                fail(error)
             }
         }
+    }
+
+    /// Reads an article and adds a plain-language explanation of it below the existing text.
+    func explainLink(_ input: String) {
+        guard !isBusy, !isRecording else { return }
+        guard let url = ArticleURL.parse(input) else {
+            fail(ArticleError.invalidURL)
+            return
+        }
+        saveVersion("Before link explanation")
+        phase = .enhancing(.explainArticle)
+        Task { [weak self] in
+            guard let self else { return }
+            let explainer = ArticleExplainer(fetcher: articleFetcher, assistant: writingAssistant)
+            do {
+                let result = try await explainer.explain(url) { [weak self] status in
+                    self?.linkStatus = status
+                }
+                append(result.formatted)
+                phase = .ready
+                saveVersion("Link explanation")
+            } catch {
+                fail(error)
+            }
+            linkStatus = ""
+        }
+    }
+
+    private func append(_ block: String) {
+        let existing = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = existing.isEmpty ? block : existing + "\n\n" + block
+    }
+
+    private func fail(_ error: Error, opensSettings: Bool = false) {
+        errorOpensSettings = opensSettings
+        phase = .error(error.localizedDescription)
     }
 
     private static func name(of action: WritingAction) -> String {
@@ -221,6 +265,8 @@ final class ComposerViewModel: ObservableObject {
         case .makeConcise: "shorten"
         case let .changeTone(tone): "\(tone.lowercased()) tone"
         case .answerPrompt: "prompt"
+        case .condenseNotes: "notes"
+        case .explainArticle: "link explanation"
         }
     }
 
@@ -231,10 +277,10 @@ final class ComposerViewModel: ObservableObject {
         guard hasContent, history.first?.text != text else { return }
         let version = DocumentVersion(id: UUID(), date: .now, label: label, text: text)
         history.insert(version, at: 0)
-        if history.count > Self.historyLimit {
-            history.removeLast(history.count - Self.historyLimit)
+        if history.count > ComposerStore.historyLimit {
+            history.removeLast(history.count - ComposerStore.historyLimit)
         }
-        persistHistory()
+        store.saveHistory(history)
     }
 
     func restore(_ version: DocumentVersion) {
@@ -245,12 +291,12 @@ final class ComposerViewModel: ObservableObject {
 
     func deleteVersion(_ version: DocumentVersion) {
         history.removeAll { $0.id == version.id }
-        persistHistory()
+        store.saveHistory(history)
     }
 
     func clearHistory() {
         history = []
-        persistHistory()
+        store.saveHistory(history)
     }
 
     // MARK: - Document
@@ -277,16 +323,10 @@ final class ComposerViewModel: ObservableObject {
     }
 
     func exportDocument() {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.plainText]
-        panel.canCreateDirectories = true
-        let name = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        panel.nameFieldStringValue = (name.isEmpty ? "Untitled" : name) + ".txt"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            try text.write(to: url, atomically: true, encoding: .utf8)
+            try DocumentExporter.export(text: text, title: title)
         } catch {
-            phase = .error(error.localizedDescription)
+            fail(error)
         }
     }
 
@@ -311,21 +351,16 @@ final class ComposerViewModel: ObservableObject {
     func flushDraft() {
         draftTask?.cancel()
         snapshotTask?.cancel()
-        persistDraft()
+        store.saveDraft(text: text, title: title)
         saveVersion("Autosave")
     }
-
-    private static let textKey = "verba.draft.text"
-    private static let titleKey = "verba.draft.title"
-    private static let historyKey = "verba.history"
-    private static let historyLimit = 40
 
     private func scheduleDraftSave() {
         draftTask?.cancel()
         draftTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            self?.persistDraft()
+            guard !Task.isCancelled, let self else { return }
+            store.saveDraft(text: text, title: title)
         }
 
         // After a pause in typing, keep a snapshot so there is always something to go back to.
@@ -335,21 +370,6 @@ final class ComposerViewModel: ObservableObject {
             guard !Task.isCancelled, let self, !isRecording, !isBusy else { return }
             saveVersion("Autosave")
         }
-    }
-
-    private func persistDraft() {
-        defaults.set(text, forKey: Self.textKey)
-        defaults.set(title, forKey: Self.titleKey)
-    }
-
-    private func persistHistory() {
-        guard let data = try? JSONEncoder().encode(history) else { return }
-        defaults.set(data, forKey: Self.historyKey)
-    }
-
-    private static func loadHistory(from defaults: UserDefaults) -> [DocumentVersion] {
-        guard let data = defaults.data(forKey: historyKey) else { return [] }
-        return (try? JSONDecoder().decode([DocumentVersion].self, from: data)) ?? []
     }
 
     private static func makeWritingAssistant() -> WritingAssistant {

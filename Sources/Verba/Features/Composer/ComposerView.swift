@@ -6,6 +6,7 @@ struct ComposerView: View {
     @ObservedObject var preferences: ComposerPreferences
 
     @State private var showSettings = false
+    @State private var showLink = false
     @State private var chromeVisible = true
 
     private var theme: ComposerTheme {
@@ -46,6 +47,7 @@ struct ComposerView: View {
                 Spacer(minLength: 0)
                 errorBanner
                 promptCard
+                linkCard
                 promptToggle
                 ComposerDock(model: model, theme: theme)
             }
@@ -167,6 +169,21 @@ struct ComposerView: View {
         }
     }
 
+    // MARK: - Explain a link
+
+    @ViewBuilder
+    private var linkCard: some View {
+        if model.isLinkActive {
+            ActivityCard(
+                theme: theme,
+                icon: "graduationcap",
+                label: "LEARNING",
+                message: model.linkStatus.isEmpty ? "Reading the page…" : model.linkStatus
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
     // MARK: - Header
 
     private var header: some View {
@@ -184,6 +201,12 @@ struct ComposerView: View {
                 .monospacedDigit()
                 .foregroundStyle(theme.muted)
                 .lineLimit(1)
+
+            headerButton("Explain a link  ⌘L", icon: "graduationcap") { showLink.toggle() }
+                .keyboardShortcut("l", modifiers: .command)
+                .popover(isPresented: $showLink, arrowEdge: .bottom) {
+                    ExplainLinkView(model: model, theme: theme) { showLink = false }
+                }
 
             headerButton("Export as text  ⌘S", icon: "square.and.arrow.down") { model.exportDocument() }
                 .keyboardShortcut("s", modifiers: .command)
@@ -244,13 +267,15 @@ struct ComposerView: View {
 
                 Spacer(minLength: 8)
 
-                Button { model.openSpeechSettings() } label: {
-                    Text("Settings")
-                        .font(.system(size: 12, weight: .medium))
-                        .padding(.horizontal, 10)
-                        .frame(minHeight: 28)
+                if model.errorOpensSettings {
+                    Button { model.openSpeechSettings() } label: {
+                        Text("Settings")
+                            .font(.system(size: 12, weight: .medium))
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 28)
+                    }
+                    .buttonStyle(DockButtonStyle(theme: theme))
                 }
-                .buttonStyle(DockButtonStyle(theme: theme))
 
                 Button { model.dismissError() } label: {
                     Image(systemName: "xmark")
