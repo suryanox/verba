@@ -48,7 +48,7 @@ struct ComposerView: View {
                 errorBanner
                 promptCard
                 linkCard
-                promptToggle
+                modeRow
                 ComposerDock(model: model, theme: theme)
             }
             .padding(.horizontal, 24)
@@ -99,6 +99,43 @@ struct ComposerView: View {
         .padding(.horizontal, 28)
         .padding(.top, 80)
         .allowsHitTesting(false)
+    }
+
+    // MARK: - Modes
+
+    /// The two "ask the AI" options, side by side above the toolbar.
+    private var modeRow: some View {
+        HStack(spacing: 8) {
+            promptToggle
+            researchButton
+        }
+    }
+
+    private var researchButton: some View {
+        let isDisabled = model.isRecording || model.isBusy
+        return Button {
+            showLink.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "graduationcap")
+                    .font(.system(size: 12, weight: .medium))
+                Text("Research a link")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundStyle(theme.text)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(theme.surface, in: Capsule())
+            .overlay(Capsule().stroke(theme.border))
+            .opacity(isDisabled ? 0.5 : 1)
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("l", modifiers: .command)
+        .disabled(isDisabled)
+        .help("Paste an article link and get a short, plain-language lesson  ⌘L")
+        .popover(isPresented: $showLink, arrowEdge: .top) {
+            ExplainLinkView(model: model, theme: theme) { showLink = false }
+        }
     }
 
     // MARK: - Prompt mode
@@ -201,12 +238,6 @@ struct ComposerView: View {
                 .monospacedDigit()
                 .foregroundStyle(theme.muted)
                 .lineLimit(1)
-
-            headerButton("Explain a link  ⌘L", icon: "graduationcap") { showLink.toggle() }
-                .keyboardShortcut("l", modifiers: .command)
-                .popover(isPresented: $showLink, arrowEdge: .bottom) {
-                    ExplainLinkView(model: model, theme: theme) { showLink = false }
-                }
 
             headerButton("Export as text  ⌘S", icon: "square.and.arrow.down") { model.exportDocument() }
                 .keyboardShortcut("s", modifiers: .command)
