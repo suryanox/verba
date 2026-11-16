@@ -32,8 +32,8 @@ final class ComposerViewModel: ObservableObject {
     @Published private(set) var hasCopied = false
     /// Newest first.
     @Published private(set) var history: [DocumentVersion] = []
-    /// When on, dictation is sent to the on-device AI as an instruction instead of being typed into the document.
-    @Published var isPromptMode = false
+    /// Which kind of work the person is doing. The bottom controls change to match.
+    @Published var mode: ComposerMode = .normal
     /// The prompt being dictated, or answered, in prompt mode.
     @Published private(set) var promptText = ""
     /// What the link explainer is doing right now, like "Reading the page…".
@@ -57,7 +57,7 @@ final class ComposerViewModel: ObservableObject {
         defaults: UserDefaults = .standard
     ) {
         self.liveSpeech = liveSpeech
-        self.writingAssistant = writingAssistant ?? Self.makeWritingAssistant()
+        self.writingAssistant = writingAssistant ?? WritingAssistantFactory.make()
         self.articleFetcher = articleFetcher
         store = ComposerStore(defaults: defaults)
         text = store.loadText()
@@ -97,12 +97,26 @@ final class ComposerViewModel: ObservableObject {
         phase == .enhancing(.explainArticle)
     }
 
+    /// In prompt mode, dictation is sent to the on-device AI as an instruction instead of being typed in.
+    var isPromptMode: Bool {
+        get { mode == .prompt }
+        set { mode = newValue ? .prompt : .normal }
+    }
+
     var wordCount: Int {
         text.split { $0.isWhitespace || $0.isNewline }.count
     }
 
     var readingMinutes: Int {
         max(1, Int((Double(wordCount) / 230).rounded(.up)))
+    }
+
+    // MARK: - Modes
+
+    /// Brings back the full toolbar, unless the microphone or the AI is busy.
+    func exitMode() {
+        guard mode != .normal, !isBusy, !isRecording else { return }
+        mode = .normal
     }
 
     // MARK: - Dictation
@@ -214,6 +228,7 @@ final class ComposerViewModel: ObservableObject {
                 append(try await writingAssistant.transform(prompt, using: .answerPrompt))
                 promptText = ""
                 phase = .ready
+                mode = .normal
                 saveVersion("Prompt")
             } catch {
                 promptText = ""
@@ -240,6 +255,7 @@ final class ComposerViewModel: ObservableObject {
                 }
                 append(result.formatted)
                 phase = .ready
+                mode = .normal
                 saveVersion("Link explanation")
             } catch {
                 fail(error)
@@ -339,10 +355,7 @@ final class ComposerViewModel: ObservableObject {
     }
 
     func openSpeechSettings() {
-        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition")
-        if let url {
-            NSWorkspace.shared.open(url)
-        }
+        SystemSettings.openSpeechRecognition()
     }
 
     // MARK: - Persistence
@@ -370,16 +383,5 @@ final class ComposerViewModel: ObservableObject {
             guard !Task.isCancelled, let self, !isRecording, !isBusy else { return }
             saveVersion("Autosave")
         }
-    }
-
-    private static func makeWritingAssistant() -> WritingAssistant {
-        if #available(macOS 26.0, *) {
-            #if canImport(FoundationModels)
-                return FoundationModelsWritingAssistant()
-            #else
-                return UnavailableWritingAssistant()
-            #endif
-        }
-        return UnavailableWritingAssistant()
     }
 }

@@ -124,7 +124,7 @@ struct ComposerDock: View {
     }
 }
 
-private struct DictationButton: View {
+struct DictationButton: View {
     @ObservedObject var model: ComposerViewModel
     let theme: ComposerTheme
     let showTitle: Bool
@@ -141,7 +141,7 @@ private struct DictationButton: View {
                     Image(systemName: model.isPromptMode ? "sparkles" : "mic.fill")
                         .font(.system(size: 14, weight: .semibold))
                     if showTitle {
-                        Text(model.isPromptMode ? "Ask" : "Dictate")
+                        Text(model.isPromptMode ? "Ask AI" : "Dictate")
                             .font(.system(size: 12.5, weight: .semibold))
                     }
                 }

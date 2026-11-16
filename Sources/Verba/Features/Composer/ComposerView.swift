@@ -6,7 +6,6 @@ struct ComposerView: View {
     @ObservedObject var preferences: ComposerPreferences
 
     @State private var showSettings = false
-    @State private var showLink = false
     @State private var chromeVisible = true
 
     private var theme: ComposerTheme {
@@ -48,8 +47,7 @@ struct ComposerView: View {
                 errorBanner
                 promptCard
                 linkCard
-                modeRow
-                ComposerDock(model: model, theme: theme)
+                bottomControls
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 22)
@@ -61,6 +59,7 @@ struct ComposerView: View {
         .preferredColorScheme(theme.isDark ? .dark : .light)
         .animation(.easeInOut(duration: 0.2), value: isChromeHidden)
         .animation(.snappy(duration: 0.25), value: model.phase)
+        .animation(.snappy(duration: 0.25), value: model.mode)
         .onChange(of: model.text) { _, _ in
             if preferences.focusMode {
                 chromeVisible = false
@@ -77,7 +76,12 @@ struct ComposerView: View {
 
     private var editor: some View {
         ZStack(alignment: .top) {
-            NativeTextEditor(text: $model.text, style: editorStyle, isDictating: model.isRecording)
+            NativeTextEditor(
+                text: $model.text,
+                style: editorStyle,
+                isDictating: model.isRecording,
+                onUserEdit: { model.exitMode() }
+            )
 
             if model.text.isEmpty {
                 placeholder
@@ -101,6 +105,25 @@ struct ComposerView: View {
         .allowsHitTesting(false)
     }
 
+    // MARK: - Bottom controls
+
+    /// The bottom area follows what you're doing: a lone Ask AI button in prompt mode, a link field in
+    /// research mode, and the full toolbar the rest of the time.
+    @ViewBuilder
+    private var bottomControls: some View {
+        switch model.mode {
+        case .normal:
+            modeRow.transition(.opacity)
+            ComposerDock(model: model, theme: theme).transition(.opacity)
+        case .prompt:
+            AskBar(model: model, theme: theme).transition(.opacity)
+        case .research:
+            if !model.isLinkActive {
+                ResearchBar(model: model, theme: theme).transition(.opacity)
+            }
+        }
+    }
+
     // MARK: - Modes
 
     /// The two "ask the AI" options, side by side above the toolbar.
@@ -114,7 +137,7 @@ struct ComposerView: View {
     private var researchButton: some View {
         let isDisabled = model.isRecording || model.isBusy
         return Button {
-            showLink.toggle()
+            model.mode = .research
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "graduationcap")
@@ -133,9 +156,6 @@ struct ComposerView: View {
         .keyboardShortcut("l", modifiers: .command)
         .disabled(isDisabled)
         .help("Paste an article link and get a short, plain-language lesson  ⌘L")
-        .popover(isPresented: $showLink, arrowEdge: .top) {
-            ExplainLinkView(model: model, theme: theme) { showLink = false }
-        }
     }
 
     // MARK: - Prompt mode

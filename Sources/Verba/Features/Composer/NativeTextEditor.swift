@@ -65,6 +65,11 @@ struct NativeTextEditor: NSViewRepresentable {
     var style: EditorStyle
     /// While true, all programmatic text changes are merged into one undo step.
     var isDictating = false
+    /// Called when the person types, pastes, or otherwise edits the text themselves.
+    var onUserEdit: () -> Void = {}
+    /// Height of the header and of the controls floating over the text, where the I-beam cursor should not show.
+    var topChromeHeight: CGFloat = 0
+    var bottomChromeHeight: CGFloat = 0
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -116,7 +121,7 @@ struct NativeTextEditor: NSViewRepresentable {
 
         coordinator.lastStyle = style
         textView.columnWidth = style.columnWidth
-    }
+        textView.updateCursorInsets(top: topChromeHeight, bottom: bottomChromeHeight)
 
     private func updateDictationGrouping(_ textView: NSTextView, coordinator: Coordinator) {
         guard coordinator.wasDictating != isDictating else { return }
@@ -174,6 +179,7 @@ struct NativeTextEditor: NSViewRepresentable {
             // Skip echoes of changes that came from the model, to avoid writing state during a view update.
             guard !isApplyingExternalChange, let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
+            parent.onUserEdit()
         }
     }
 }
@@ -227,9 +233,28 @@ private final class NativeTextView: NSTextView {
         didSet { updateHorizontalInset() }
     }
 
+    private var topCursorInset: CGFloat = 0
+    private var bottomCursorInset: CGFloat = 0
+
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         updateHorizontalInset()
+    }
+
+    /// Keeps the text cursor (I-beam) away from the header and toolbar that float over the text.
+    func updateCursorInsets(top: CGFloat, bottom: CGFloat) {
+        guard top != topCursorInset || bottom != bottomCursorInset else { return }
+        topCursorInset = top
+        bottomCursorInset = bottom
+        window?.invalidateCursorRects(for: self)
+    }
+
+    override func resetCursorRects() {
+        var area = visibleRect
+        area.origin.y += topCursorInset
+        area.size.height -= topCursorInset + bottomCursorInset
+        guard area.height > 0 else { return }
+        addCursorRect(area, cursor: .iBeam)
     }
 
     override func viewDidMoveToWindow() {
