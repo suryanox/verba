@@ -122,6 +122,7 @@ struct NativeTextEditor: NSViewRepresentable {
         coordinator.lastStyle = style
         textView.columnWidth = style.columnWidth
         textView.updateCursorInsets(top: topChromeHeight, bottom: bottomChromeHeight)
+    }
 
     private func updateDictationGrouping(_ textView: NSTextView, coordinator: Coordinator) {
         guard coordinator.wasDictating != isDictating else { return }

@@ -21,6 +21,14 @@ struct ComposerView: View {
         return !model.isRecording && !model.isBusy
     }
 
+    /// How tall the controls floating at the bottom are right now, so the text cursor stays off them.
+    private var bottomChromeHeight: CGFloat {
+        let controls: CGFloat = model.mode == .normal ? 132 : 84
+        var hasStatusCard = model.isPromptActive || model.isLinkActive
+        if case .error = model.phase { hasStatusCard = true }
+        return controls + (hasStatusCard ? 84 : 0)
+    }
+
     private var editorStyle: EditorStyle {
         EditorStyle(
             font: preferences.font.nsFont(size: preferences.fontSize),
@@ -80,7 +88,9 @@ struct ComposerView: View {
                 text: $model.text,
                 style: editorStyle,
                 isDictating: model.isRecording,
-                onUserEdit: { model.exitMode() }
+                onUserEdit: { model.exitMode() },
+                topChromeHeight: isChromeHidden ? 0 : 52,
+                bottomChromeHeight: isChromeHidden ? 0 : bottomChromeHeight
             )
 
             if model.text.isEmpty {
