@@ -1,6 +1,39 @@
 import SwiftUI
 
-/// The floating bar at the bottom of the editor: dictate, polish, and quick utilities.
+/// A rounded capsule holding one group of related controls, with a small caption underneath.
+struct DockGroup<Content: View>: View {
+    let theme: ComposerTheme
+    let caption: String?
+    let content: Content
+
+    init(theme: ComposerTheme, caption: String? = nil, @ViewBuilder content: () -> Content) {
+        self.theme = theme
+        self.caption = caption
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 2) {
+                content
+            }
+            .padding(.horizontal, 6)
+            .frame(height: 52)
+            .background(theme.surface, in: Capsule())
+            .overlay(Capsule().stroke(theme.border))
+            .shadow(color: .black.opacity(theme.isDark ? 0.4 : 0.1), radius: 20, y: 8)
+
+            if let caption {
+                Text(caption.uppercased())
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(1)
+                    .foregroundStyle(theme.muted.opacity(0.85))
+            }
+        }
+    }
+}
+
+/// The toolbar shown while writing, split by purpose: input, improving the text, and managing the document.
 struct ComposerDock: View {
     @ObservedObject var model: ComposerViewModel
     let theme: ComposerTheme
@@ -9,52 +42,54 @@ struct ComposerDock: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            bar(showLabels: true)
-            bar(showLabels: false)
+            row(showLabels: true)
+            row(showLabels: false)
         }
         .popover(isPresented: $showHistory, arrowEdge: .top) {
             ComposerHistoryView(model: model, theme: theme) { showHistory = false }
         }
     }
 
-    private func bar(showLabels: Bool) -> some View {
-        HStack(spacing: 4) {
-            DictationButton(model: model, theme: theme, showTitle: showLabels)
-            divider
-            polishButton(
-                "Fix",
-                icon: "text.badge.checkmark",
-                action: .improveGrammar,
-                key: "1",
-                showLabels: showLabels
-            )
-            polishButton("Polish", icon: "sparkles", action: .professionalize, key: "2", showLabels: showLabels)
-            polishButton(
-                "Shorten",
-                icon: "arrow.down.right.and.arrow.up.left",
-                action: .makeConcise,
-                key: "3",
-                showLabels: showLabels
-            )
-            toneMenu(showLabels: showLabels)
-            divider
-            utilities
+    private func row(showLabels: Bool) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            DockGroup(theme: theme, caption: "Input") {
+                DictationButton(model: model, theme: theme, showTitle: showLabels)
+            }
+
+            DockGroup(theme: theme, caption: "Improve") {
+                improvements(showLabels: showLabels)
+            }
+
+            DockGroup(theme: theme, caption: "Manage") {
+                management
+            }
         }
-        .padding(6)
-        .background(theme.surface, in: Capsule())
-        .overlay(Capsule().stroke(theme.border))
-        .shadow(color: .black.opacity(theme.isDark ? 0.45 : 0.12), radius: 24, y: 10)
     }
 
-    private var divider: some View {
-        Rectangle()
-            .fill(theme.border)
-            .frame(width: 1, height: 22)
-            .padding(.horizontal, 4)
-    }
+    // MARK: - Improve
 
     private var isWritingToolDisabled: Bool {
         !model.hasContent || model.isBusy || model.isRecording
+    }
+
+    @ViewBuilder
+    private func improvements(showLabels: Bool) -> some View {
+        polishButton(
+            "Fix",
+            icon: "text.badge.checkmark",
+            action: .improveGrammar,
+            key: "1",
+            showLabels: showLabels
+        )
+        polishButton("Polish", icon: "sparkles", action: .professionalize, key: "2", showLabels: showLabels)
+        polishButton(
+            "Shorten",
+            icon: "arrow.down.right.and.arrow.up.left",
+            action: .makeConcise,
+            key: "3",
+            showLabels: showLabels
+        )
+        toneMenu(showLabels: showLabels)
     }
 
     private func polishButton(
@@ -98,21 +133,21 @@ struct ComposerDock: View {
         return false
     }
 
-    private var utilities: some View {
-        HStack(spacing: 2) {
-            iconButton("Undo", icon: "arrow.uturn.backward") { NativeTextEditorActions.undo() }
-            iconButton("Redo", icon: "arrow.uturn.forward") { NativeTextEditorActions.redo() }
+    // MARK: - Manage
 
-            iconButton("History", icon: "clock.arrow.circlepath") { showHistory.toggle() }
+    @ViewBuilder
+    private var management: some View {
+        iconButton("Undo", icon: "arrow.uturn.backward") { NativeTextEditorActions.undo() }
+        iconButton("Redo", icon: "arrow.uturn.forward") { NativeTextEditorActions.redo() }
+        iconButton("History", icon: "clock.arrow.circlepath") { showHistory.toggle() }
 
-            iconButton("Copy all  ⇧⌘C", icon: model.hasCopied ? "checkmark" : "doc.on.doc") { model.copyText() }
-                .keyboardShortcut("c", modifiers: [.command, .shift])
-                .disabled(model.text.isEmpty)
+        iconButton("Copy all  ⇧⌘C", icon: model.hasCopied ? "checkmark" : "doc.on.doc") { model.copyText() }
+            .keyboardShortcut("c", modifiers: [.command, .shift])
+            .disabled(model.text.isEmpty)
 
-            iconButton("Clear  ⇧⌘⌫", icon: "trash") { model.clear() }
-                .keyboardShortcut(.delete, modifiers: [.command, .shift])
-                .disabled(model.text.isEmpty)
-        }
+        iconButton("Clear  ⇧⌘⌫", icon: "trash") { model.clear() }
+            .keyboardShortcut(.delete, modifiers: [.command, .shift])
+            .disabled(model.text.isEmpty)
     }
 
     private func iconButton(_ help: String, icon: String, action: @escaping () -> Void) -> some View {

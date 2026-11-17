@@ -23,7 +23,7 @@ struct ComposerView: View {
 
     /// How tall the controls floating at the bottom are right now, so the text cursor stays off them.
     private var bottomChromeHeight: CGFloat {
-        let controls: CGFloat = model.mode == .normal ? 132 : 84
+        let controls: CGFloat = model.mode == .research ? 132 : 150
         var hasStatusCard = model.isPromptActive || model.isLinkActive
         if case .error = model.phase { hasStatusCard = true }
         return controls + (hasStatusCard ? 84 : 0)
@@ -117,13 +117,14 @@ struct ComposerView: View {
 
     // MARK: - Bottom controls
 
-    /// The bottom area follows what you're doing: a lone Ask AI button in prompt mode, a link field in
-    /// research mode, and the full toolbar the rest of the time.
+    /// The mode switcher is always there. Below it, the controls follow what you're doing: the full toolbar
+    /// while writing, a lone Ask AI button in Ask AI mode, and a link field in Research mode.
     @ViewBuilder
     private var bottomControls: some View {
+        ModeSwitcher(model: model, theme: theme)
+
         switch model.mode {
         case .normal:
-            modeRow.transition(.opacity)
             ComposerDock(model: model, theme: theme).transition(.opacity)
         case .prompt:
             AskBar(model: model, theme: theme).transition(.opacity)
@@ -134,57 +135,7 @@ struct ComposerView: View {
         }
     }
 
-    // MARK: - Modes
-
-    /// The two "ask the AI" options, side by side above the toolbar.
-    private var modeRow: some View {
-        HStack(spacing: 8) {
-            promptToggle
-            researchButton
-        }
-    }
-
-    private var researchButton: some View {
-        let isDisabled = model.isRecording || model.isBusy
-        return Button {
-            model.mode = .research
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "graduationcap")
-                    .font(.system(size: 12, weight: .medium))
-                Text("Research a link")
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .foregroundStyle(theme.text)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .background(theme.surface, in: Capsule())
-            .overlay(Capsule().stroke(theme.border))
-            .opacity(isDisabled ? 0.5 : 1)
-        }
-        .buttonStyle(.plain)
-        .keyboardShortcut("l", modifiers: .command)
-        .disabled(isDisabled)
-        .help("Paste an article link and get a short, plain-language lesson  ⌘L")
-    }
-
-    // MARK: - Prompt mode
-
-    private var promptToggle: some View {
-        Toggle(isOn: $model.isPromptMode) {
-            Text("Dictate a prompt")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(model.isPromptMode ? theme.text : theme.muted)
-        }
-        .toggleStyle(.checkbox)
-        .tint(theme.accent)
-        .disabled(model.isRecording || model.isBusy)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .background(theme.surface, in: Capsule())
-        .overlay(Capsule().stroke(theme.border))
-        .help("Send what you dictate to the on-device AI as a prompt. Its answer is added to your document.")
-    }
+    // MARK: - Prompt card
 
     /// Shows the prompt as you speak it, then while the AI is working on it.
     @ViewBuilder

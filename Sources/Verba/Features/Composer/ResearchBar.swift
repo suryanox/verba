@@ -38,13 +38,6 @@ struct ResearchBar: View {
             .buttonStyle(.plain)
             .disabled(!canExplain)
             .help("Explain this page in plain words  Return")
-
-            Button { model.exitMode() } label: {
-                DockLabel(title: "Close", icon: "xmark", showTitle: false)
-            }
-            .buttonStyle(DockButtonStyle(theme: theme))
-            .keyboardShortcut(.cancelAction)
-            .help("Back to all tools  Esc")
         }
         .padding(6)
         .frame(maxWidth: 560)
