@@ -3,12 +3,15 @@ import Foundation
 struct ArticleExplanation: Equatable {
     let title: String
     let url: URL
+    /// The model's raw reply.
     let text: String
+    /// The reply read into sections, or nil when the model didn't follow the format.
+    let lesson: ArticleLesson?
 
     /// What gets added to the document: the title, the link, then the lesson.
     var formatted: String {
         let heading = title.isEmpty ? (url.host ?? url.absoluteString) : title
-        return "\(heading)\n\(url.absoluteString)\n\n\(text)"
+        return "\(heading)\n\(url.absoluteString)\n\n\(lesson?.formatted() ?? text)"
     }
 }
 
@@ -84,12 +87,9 @@ struct ArticleExplainer {
         let material = try await material(from: article.text, progress: progress)
         progress("Writing the explanation…")
 
-        let lesson = try await assistant.transform("Title: \(article.title)\n\n\(material)", using: .explainArticle)
-        return ArticleExplanation(
-            title: article.title,
-            url: url,
-            text: lesson.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
+        let reply = try await assistant.transform("Title: \(article.title)\n\n\(material)", using: .explainArticle)
+        let text = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        return ArticleExplanation(title: article.title, url: url, text: text, lesson: ArticleLesson.parse(text))
     }
 
     private func material(from text: String, progress: (String) -> Void) async throws -> String {

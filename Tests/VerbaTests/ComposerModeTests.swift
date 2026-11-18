@@ -23,8 +23,9 @@ private struct ModeAssistant: WritingAssistant {
 
 private struct ModeFetcher: ArticleFetching {
     func html(from url: URL) async throws -> String {
-        let paragraph = "<p>Paragraph explains how packets travel across the internet using routers.</p>"
-        let body = Array(repeating: paragraph, count: 8).joined(separator: "\n")
+        let body = (1...8)
+            .map { "<p>Paragraph \($0) explains how packets travel across the internet using routers.</p>" }
+            .joined(separator: "\n")
         return "<html><head><title>Packets</title></head><body><article>\(body)</article></body></html>"
     }
 }

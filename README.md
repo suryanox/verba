@@ -47,7 +47,7 @@ make icon    # regenerate the app icon
 - **Focus mode:** the toolbar fades while you type and returns when you move the mouse.
 - **Three modes:** a switcher at the bottom picks **Write**, **Ask AI**, or **Research**, and the controls below it change to match.
 - **Ask AI:** dictate a prompt and the on-device AI's answer is added to your document.
-- **Research:** paste an article link and get a short, plain-language lesson on what it says, like a patient teacher explaining it to a beginner.
+- **Research:** paste an article link and get a plain-language lesson in a fixed shape (what it's about, how they did it, what they found), plus a simple diagram of the steps, like a patient teacher explaining it to a beginner.
 - **Drafts autosave** and can be exported as plain text with `⌘S`.
 
 ## Architectural direction

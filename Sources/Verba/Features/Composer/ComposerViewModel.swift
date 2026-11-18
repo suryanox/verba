@@ -38,6 +38,8 @@ final class ComposerViewModel: ObservableObject {
     @Published private(set) var promptText = ""
     /// What the link explainer is doing right now, like "Reading the page…".
     @Published private(set) var linkStatus = ""
+    /// Short step names for the flow diagram drawn after a research, in order. Empty when there is none.
+    @Published private(set) var diagram: [String] = []
     /// True when the current error is about speech permissions, so the banner can offer to open Settings.
     @Published private(set) var errorOpensSettings = false
 
@@ -101,14 +103,6 @@ final class ComposerViewModel: ObservableObject {
     var isPromptMode: Bool {
         get { mode == .prompt }
         set { mode = newValue ? .prompt : .normal }
-    }
-
-    var wordCount: Int {
-        text.split { $0.isWhitespace || $0.isNewline }.count
-    }
-
-    var readingMinutes: Int {
-        max(1, Int((Double(wordCount) / 230).rounded(.up)))
     }
 
     // MARK: - Modes
@@ -245,6 +239,7 @@ final class ComposerViewModel: ObservableObject {
             return
         }
         saveVersion("Before link explanation")
+        diagram = []
         phase = .enhancing(.explainArticle)
         Task { [weak self] in
             guard let self else { return }
@@ -254,6 +249,7 @@ final class ComposerViewModel: ObservableObject {
                     self?.linkStatus = status
                 }
                 append(result.formatted)
+                diagram = result.lesson?.diagram ?? []
                 phase = .ready
                 mode = .normal
                 saveVersion("Link explanation")
@@ -347,6 +343,10 @@ final class ComposerViewModel: ObservableObject {
     }
 
     // MARK: - Errors and settings
+
+    func dismissDiagram() {
+        diagram = []
+    }
 
     func dismissError() {
         if case .error = phase {

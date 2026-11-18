@@ -50,6 +50,9 @@ struct WritingPromptBuilder {
         """
         Below is one part of a longer article. Write short bullet notes of its key facts and ideas.
 
+        Pay most attention to three things: what the work is about, how it was done (the method or steps), \
+        and what was found (results, numbers, outcomes).
+
         Use at most 8 bullets, each one short line starting with "- ".
         Only use what the text says. Do not add outside knowledge, opinions, or commentary.
 
@@ -63,18 +66,25 @@ struct WritingPromptBuilder {
         You are an old-school teacher explaining an article to a complete beginner who knows nothing about \
         the subject.
 
-        Write exactly four short lines in plain text, with no markdown symbols and no bullets:
-        The idea: one sentence saying what this is really about.
-        Why it matters: one sentence.
-        How it works: two to four short sentences. Use one simple everyday comparison.
-        Remember: one short sentence the reader should take away.
+        Answer in exactly this format, in plain text with no markdown symbols:
+
+        About: one or two short sentences saying what this is really about and why it matters.
+        How:
+        - three to five short steps, in order, showing how they did it or how it works
+        Results:
+        - two to four short lines saying what they found or what came out of it
+        Diagram: three to five very short step names (two to four words each) separated by ">"
 
         Rules:
         - Teach the idea itself. Never write "this article", "the author", "the text", or "the piece".
         - Use short, plain words. Explain any technical word the first time you use it.
+        - Put one simple everyday comparison inside About or How.
         - No hype, no filler, no buzzwords, no opinions.
-        - Use only facts found below. Never invent details. If something is unclear, leave it out.
-        - Keep the whole answer under 110 words.
+        - Use only facts found below. Never invent details or numbers.
+        - If the article does not say how it was done, or what the results were, write "Not stated." \
+        for that part instead of guessing.
+        - The Diagram steps must follow the same order as the How steps.
+        - Keep the whole answer under 150 words.
 
         Article:
         \(article)

@@ -26,7 +26,7 @@ struct ComposerView: View {
         let controls: CGFloat = model.mode == .research ? 132 : 150
         var hasStatusCard = model.isPromptActive || model.isLinkActive
         if case .error = model.phase { hasStatusCard = true }
-        return controls + (hasStatusCard ? 84 : 0)
+        return controls + (hasStatusCard ? 84 : 0) + (model.diagram.isEmpty ? 0 : 124)
     }
 
     private var editorStyle: EditorStyle {
@@ -55,6 +55,7 @@ struct ComposerView: View {
                 errorBanner
                 promptCard
                 linkCard
+                diagramCard
                 bottomControls
             }
             .padding(.horizontal, 24)
@@ -190,6 +191,14 @@ struct ComposerView: View {
     // MARK: - Explain a link
 
     @ViewBuilder
+    private var diagramCard: some View {
+        if !model.diagram.isEmpty {
+            DiagramCard(theme: theme, steps: model.diagram) { model.dismissDiagram() }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    @ViewBuilder
     private var linkCard: some View {
         if model.isLinkActive {
             ActivityCard(
@@ -249,10 +258,10 @@ struct ComposerView: View {
     }
 
     private var statsText: String {
-        let words = model.wordCount
+        let words = model.text.wordCount
         guard words > 0 else { return "0 words" }
         let noun = words == 1 ? "word" : "words"
-        return "\(words) \(noun) · \(model.text.count) chars · \(model.readingMinutes) min read"
+        return "\(words) \(noun) · \(model.text.count) chars · \(model.text.readingMinutes) min read"
     }
 
     private func headerButton(_ help: String, icon: String, action: @escaping () -> Void) -> some View {
