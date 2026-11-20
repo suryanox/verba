@@ -38,7 +38,7 @@ final class ComposerViewModel: ObservableObject {
     @Published private(set) var promptText = ""
     /// What the link explainer is doing right now, like "Reading the page…".
     @Published private(set) var linkStatus = ""
-    /// Short step names for the flow diagram drawn after a research, in order. Empty when there is none.
+    /// Short step names for the flow diagram drawn after explaining a link, in order. Empty when there is none.
     @Published private(set) var diagram: [String] = []
     /// True when the current error is about speech permissions, so the banner can offer to open Settings.
     @Published private(set) var errorOpensSettings = false

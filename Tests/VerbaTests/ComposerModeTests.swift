@@ -63,7 +63,7 @@ func modeDefaultsToNormal() throws {
     #expect(model.mode == .normal)
 }
 
-@Test("Typing or pasting brings back the full toolbar from prompt and research mode")
+@Test("Typing or pasting brings back the full toolbar from Ask AI and Explain mode")
 @MainActor
 func userEditsExitModes() throws {
     let model = try makeModeModel()
@@ -72,7 +72,7 @@ func userEditsExitModes() throws {
     model.exitMode()
     #expect(model.mode == .normal)
 
-    model.mode = .research
+    model.mode = .explain
     model.exitMode()
     #expect(model.mode == .normal)
 }
@@ -112,7 +112,7 @@ func answeredPromptReturnsToNormal() async throws {
 @MainActor
 func explainedLinkReturnsToNormal() async throws {
     let model = try makeModeModel()
-    model.mode = .research
+    model.mode = .explain
 
     model.explainLink("https://example.com/packets")
     await waitUntilIdle(model)
@@ -121,13 +121,13 @@ func explainedLinkReturnsToNormal() async throws {
     #expect(model.text.contains("The idea: networks move data."))
 }
 
-@Test("A bad link keeps research mode open so it can be fixed")
+@Test("A bad link keeps Explain mode open so it can be fixed")
 @MainActor
-func badLinkKeepsResearchMode() throws {
+func badLinkKeepsExplainMode() throws {
     let model = try makeModeModel()
-    model.mode = .research
+    model.mode = .explain
 
     model.explainLink("not a link")
 
-    #expect(model.mode == .research)
+    #expect(model.mode == .explain)
 }

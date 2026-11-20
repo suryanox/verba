@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Picks what you're doing: writing, asking the AI, or researching a link.
+/// Picks what you're doing: writing, asking the AI, or explaining a link.
 /// It stays on screen in every mode, and the controls below it change to match.
 struct ModeSwitcher: View {
     @ObservedObject var model: ComposerViewModel
@@ -15,10 +15,10 @@ struct ModeSwitcher: View {
             segment(.normal, title: "Write", icon: "square.and.pencil", help: "Write and edit")
             segment(.prompt, title: "Ask AI", icon: "sparkles", help: "Dictate a prompt for the AI")
             segment(
-                .research,
-                title: "Research",
+                .explain,
+                title: "Explain",
                 icon: "graduationcap",
-                help: "Explain an article link  ⌘L",
+                help: "Explain an article link in plain words  ⌘L",
                 shortcut: KeyboardShortcut("l", modifiers: .command)
             )
         }

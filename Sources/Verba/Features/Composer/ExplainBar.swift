@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// Research mode: the toolbar is replaced by a single field where you paste an article link.
-struct ResearchBar: View {
+/// Explain mode: the toolbar is replaced by a single field where you paste an article link.
+struct ExplainBar: View {
     @ObservedObject var model: ComposerViewModel
     let theme: ComposerTheme
 

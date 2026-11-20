@@ -23,10 +23,16 @@ struct ComposerView: View {
 
     /// How tall the controls floating at the bottom are right now, so the text cursor stays off them.
     private var bottomChromeHeight: CGFloat {
-        let controls: CGFloat = model.mode == .research ? 132 : 150
+        let controls: CGFloat = model.mode == .explain ? 132 : 150
         var hasStatusCard = model.isPromptActive || model.isLinkActive
         if case .error = model.phase { hasStatusCard = true }
-        return controls + (hasStatusCard ? 84 : 0) + (model.diagram.isEmpty ? 0 : 124)
+        return controls + (hasStatusCard ? 84 : 0) + diagramHeight
+    }
+
+    /// The whiteboard is taller when it needs two rows of steps.
+    private var diagramHeight: CGFloat {
+        if model.diagram.isEmpty { return 0 }
+        return model.diagram.count <= 4 ? 170 : 270
     }
 
     private var editorStyle: EditorStyle {
@@ -119,7 +125,7 @@ struct ComposerView: View {
     // MARK: - Bottom controls
 
     /// The mode switcher is always there. Below it, the controls follow what you're doing: the full toolbar
-    /// while writing, a lone Ask AI button in Ask AI mode, and a link field in Research mode.
+    /// while writing, a lone Ask AI button in Ask AI mode, and a link field in Explain mode.
     @ViewBuilder
     private var bottomControls: some View {
         ModeSwitcher(model: model, theme: theme)
@@ -129,9 +135,9 @@ struct ComposerView: View {
             ComposerDock(model: model, theme: theme).transition(.opacity)
         case .prompt:
             AskBar(model: model, theme: theme).transition(.opacity)
-        case .research:
+        case .explain:
             if !model.isLinkActive {
-                ResearchBar(model: model, theme: theme).transition(.opacity)
+                ExplainBar(model: model, theme: theme).transition(.opacity)
             }
         }
     }

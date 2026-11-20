@@ -4,6 +4,6 @@ enum ComposerMode: Equatable {
     case normal
     /// Dictating a prompt for the AI: just the Ask button.
     case prompt
-    /// Researching a link: just the link field.
-    case research
+    /// Explaining an article link: just the link field.
+    case explain
 }

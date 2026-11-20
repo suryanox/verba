@@ -156,9 +156,9 @@ private func waitUntilIdle(_ model: ComposerViewModel) async {
     }
 }
 
-@Test("Researching a link writes the structured lesson and sets the diagram")
+@Test("Explaining a link writes the structured lesson and sets the diagram")
 @MainActor
-func researchWritesLessonAndDiagram() async throws {
+func explainWritesLessonAndDiagram() async throws {
     let model = try makeLessonModel(reply: structuredReply)
 
     model.explainLink("https://example.com/tumors")
@@ -175,7 +175,7 @@ func researchWritesLessonAndDiagram() async throws {
 
 @Test("If the model ignores the format, its reply is kept as plain text with no diagram")
 @MainActor
-func researchFallsBackToPlainText() async throws {
+func explainFallsBackToPlainText() async throws {
     let model = try makeLessonModel(reply: "Networks move data in small packets.")
 
     model.explainLink("https://example.com/tumors")

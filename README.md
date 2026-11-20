@@ -7,9 +7,9 @@ Native macOS voice-to-text and writing assistant.
 - A Mac with Apple silicon (M1 or later)
 - macOS 15 or later to build and run
 - Xcode 16 or later (Swift 6)
-- macOS 26 with Apple Intelligence turned on, for the AI features: fix, polish, shorten, tone, Ask AI, and Research. Dictation and editing work without it.
+- macOS 26 with Apple Intelligence turned on, for the AI features: fix, polish, shorten, tone, Ask AI, and Explain. Dictation and editing work without it.
 - Microphone and Speech Recognition permission, which the app asks for on first launch
-- An internet connection for Research, which downloads the page you give it. The AI itself runs on your Mac.
+- An internet connection for Explain, which downloads the page you give it. The AI itself runs on your Mac.
 - Optional: [SwiftLint](https://github.com/realm/SwiftLint) (`brew install swiftlint`) for `make check`
 
 ## How to run
@@ -45,9 +45,9 @@ make icon    # regenerate the app icon
 - **Undo, redo, and history:** `⌘Z` works across typing, dictation, and AI edits, and the History popover keeps restorable snapshots between launches.
 - **Personal look:** four themes (Midnight, Graphite, Paper, Sepia), four typefaces, adjustable size, line spacing, and column width.
 - **Focus mode:** the toolbar fades while you type and returns when you move the mouse.
-- **Three modes:** a switcher at the bottom picks **Write**, **Ask AI**, or **Research**, and the controls below it change to match.
+- **Three modes:** a switcher at the bottom picks **Write**, **Ask AI**, or **Explain**, and the controls below it change to match.
 - **Ask AI:** dictate a prompt and the on-device AI's answer is added to your document.
-- **Research:** paste an article link and get a plain-language lesson in a fixed shape (what it's about, how they did it, what they found), plus a simple diagram of the steps, like a patient teacher explaining it to a beginner.
+- **Explain:** paste an article link and get a plain-language lesson in a fixed shape (what it's about, how they did it, what they found), plus a whiteboard-style diagram of the steps, like a patient teacher explaining it to a beginner.
 - **Drafts autosave** and can be exported as plain text with `⌘S`.
 
 ## Architectural direction
